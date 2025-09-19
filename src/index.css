@@ -1,68 +1,107 @@
-:root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
+@import "tailwindcss";
 
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
-
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-a:hover {
-  color: #535bf2;
-}
-
-body {
-  margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
-  min-height: 100vh;
-}
-
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
-}
-
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
-  cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
-}
-
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
+/* ===== HomeClimate+ — Theme v2 (Glass + EcoSky) ===== */
+@layer components {
+  /* Page background */
+  .hc-page {
+    @apply min-h-dvh text-slate-900 dark:text-slate-100;
+    background:
+      radial-gradient(1200px 600px at 80% -20%, rgba(14,165,233,0.15), transparent 60%),
+      radial-gradient(900px 500px at -10% 10%, rgba(16,185,129,0.15), transparent 60%),
+      linear-gradient(180deg, #fafdff 0%, #f1fbf7 40%, #ffffff 100%);
   }
-  a:hover {
-    color: #747bff;
+  .dark .hc-page {
+    background:
+      radial-gradient(1200px 600px at 80% -20%, rgba(56,189,248,0.12), transparent 60%),
+      radial-gradient(900px 500px at -10% 10%, rgba(34,197,94,0.12), transparent 60%),
+      linear-gradient(180deg, #020617 0%, #0b1220 45%, #0f172a 100%);
   }
-  button {
-    background-color: #f9f9f9;
+
+  /* Header glass */
+  .hc-header {
+    @apply sticky top-0 z-40 border-b;
+    background: color-mix(in oklab, white 70%, transparent);
+    -webkit-backdrop-filter: saturate(140%) blur(8px);
+    backdrop-filter: saturate(140%) blur(8px);
   }
+  .dark .hc-header {
+    background: color-mix(in oklab, #0f172a 75%, transparent);
+  }
+
+  /* Card glass */
+  .hc-card {
+    @apply rounded-2xl border p-4;
+    background: color-mix(in oklab, white 78%, transparent);
+    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+    border-color: color-mix(in oklab, #e2e8f0 70%, transparent);
+  }
+  .dark .hc-card {
+    background: color-mix(in oklab, #0b1324 74%, transparent);
+    border-color: color-mix(in oklab, #334155 60%, transparent);
+    box-shadow: 0 12px 36px rgba(2, 6, 23, 0.5);
+  }
+
+  /* Buttons */
+  .hc-btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2
+           text-sm font-medium border transition;
+    background: linear-gradient(180deg, #0ea5e9, #0284c7);
+    color: white; border-color: #0284c7;
+  }
+  .hc-btn-primary:hover { filter: brightness(1.07); }
+
+  .hc-btn-success {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2
+           text-sm font-medium border transition;
+    background: linear-gradient(180deg, #10b981, #059669);
+    color: white; border-color: #059669;
+  }
+  .hc-btn-success:hover { filter: brightness(1.06); }
+
+  .hc-btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2
+           text-sm font-medium border transition;
+    border-color: color-mix(in oklab, #e2e8f0 70%, transparent);
+  }
+  .hc-btn-ghost:hover { background: color-mix(in oklab, white 60%, transparent); }
+  .dark .hc-btn-ghost:hover { background: color-mix(in oklab, #0f172a 60%, transparent); }
+
+  /* Segmented/Toggle button (for modes) */
+  .hc-seg { @apply inline-flex rounded-xl border overflow-hidden; }
+  .hc-seg > button { @apply px-4 py-2 text-sm border-0; }
+  .hc-seg .is-active {
+    background: linear-gradient(180deg, #38bdf8, #0ea5e9);
+    color: white;
+  }
+
+  /* Input */
+  .hc-input {
+    @apply w-full rounded-xl border px-3 py-2 text-sm focus:outline-none;
+    background: color-mix(in oklab, white 80%, transparent);
+    border-color: color-mix(in oklab, #cbd5e1 70%, transparent);
+    box-shadow: inset 0 1px 0 rgba(15,23,42,.04);
+  }
+  .hc-input:focus { box-shadow: 0 0 0 3px rgba(14,165,233,.25); }
+
+  /* Badge small */
+  .hc-badge {
+    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs;
+    background: color-mix(in oklab, #e0f2fe 70%, transparent);
+    color: #0369a1; border: 1px solid #bae6fd;
+  }
+
+  /* Toast */
+  .hc-toast {
+    @apply fixed bottom-4 left-1/2 -translate-x-1/2 z-50 px-4 py-2 text-sm rounded-xl;
+    background: color-mix(in oklab, #0f172a 92%, transparent); color: white;
+    box-shadow: 0 10px 30px rgba(2,6,23,.5);
+  }
+
+  /* Icon button */
+  .hc-icon {
+    @apply size-9 inline-grid place-items-center rounded-lg border transition;
+    border-color: color-mix(in oklab, #e2e8f0 70%, transparent);
+  }
+  .hc-icon:hover { background: color-mix(in oklab, white 60%, transparent); }
+  .dark .hc-icon:hover { background: color-mix(in oklab, #0f172a 60%, transparent); }
 }
