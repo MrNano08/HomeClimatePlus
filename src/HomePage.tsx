@@ -7,27 +7,6 @@ interface RealtimeStats { kwhNow: number; co2Now: number; maintenanceDue: boolea
 const fmt = (n: number, digits = 1) =>
   new Intl.NumberFormat("es-CR", { maximumFractionDigits: digits }).format(n);
 
-/* === Dark/Light with localStorage (persistente) === */
-function useTheme() {
-  const getInitial = () => {
-    if (typeof window === "undefined") return "light";
-    const saved = localStorage.getItem("hc-theme");
-    if (saved === "dark" || saved === "light") return saved;
-    return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-  };
-  const [theme, setTheme] = useState<"dark" | "light">(getInitial);
-
-  useEffect(() => {
-    const root = document.documentElement;
-    if (theme === "dark") root.classList.add("dark");
-    else root.classList.remove("dark");
-    localStorage.setItem("hc-theme", theme);
-  }, [theme]);
-
-  const toggle = () => setTheme((t) => (t === "dark" ? "light" : "dark"));
-  return { theme, toggle };
-}
-
 /* === Atajos de teclado === */
 function useKeyboardShortcuts(openSearch: () => void, openHelp: () => void) {
   useEffect(() => {
@@ -45,7 +24,7 @@ const Card: React.FC<React.PropsWithChildren<{ title: string; className?: string
   title, className, icon, children
 }) => (
   <section
-    className={`bg-white text-slate-800 dark:bg-slate-800 dark:text-slate-200 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 p-6 transition-all duration-300 hover:shadow-2xl ${className ?? ""}`}
+    className={`bg-white text-slate-800 rounded-2xl shadow-xl border border-slate-200 p-6 transition-all duration-300 hover:shadow-2xl ${className ?? ""}`}
     aria-label={title}
   >
     <div className="flex items-center gap-3 mb-4">
@@ -67,7 +46,7 @@ const Button: React.FC<
     success:
       "bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white shadow-lg",
     ghost:
-      "bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-600",
+      "bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300",
   };
   return (
     <button
@@ -88,7 +67,6 @@ const HomePage: React.FC = () => {
   const [toast, setToast] = useState<string | null>(null);
   const [lastSnapshot, setLastSnapshot] = useState<DeviceStatus | null>(null);
 
-  const { theme, toggle } = useTheme();
   useKeyboardShortcuts(() => setSearchOpen(true), () => setHelpOpen(true));
 
   useEffect(() => {
@@ -151,9 +129,9 @@ const HomePage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 text-slate-900 dark:text-slate-100">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 text-slate-900">
       {/* Header */}
-      <header className="bg-white/95 dark:bg-slate-800/95 backdrop-blur-sm shadow-lg border-b border-slate-200 dark:border-slate-700 sticky top-0 z-40">
+      <header className="bg-white/95 backdrop-blur-sm shadow-lg border-b border-slate-200 sticky top-0 z-40">
         <div className="mx-auto max-w-7xl px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
@@ -161,10 +139,10 @@ const HomePage: React.FC = () => {
                 <span className="text-white font-bold text-xl">H</span>
               </div>
               <div>
-                <h1 className="text-3xl font-bold text-slate-800 dark:text-white">
+                <h1 className="text-3xl font-bold text-slate-800">
                   HomeClimate<span className="text-blue-600">+</span>
                 </h1>
-                <div className="flex flex-wrap items-center gap-4 text-sm text-slate-700 dark:text-slate-400 mt-1">
+                <div className="flex flex-wrap items-center gap-4 text-sm text-slate-700 mt-1">
                   <div className="flex items-center gap-2">
                     <div className={`w-3 h-3 rounded-full animate-pulse ${device.connected ? "bg-emerald-500" : "bg-red-500"}`} />
                     <span>{device.connected ? "Dispositivos conectados" : "Sin conexión"}</span>
@@ -182,13 +160,6 @@ const HomePage: React.FC = () => {
             </div>
 
             <div className="flex items-center gap-3">
-              <button
-                onClick={toggle}
-                className="p-2 rounded-xl bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors text-slate-800 dark:text-slate-100"
-                title={`Cambiar a modo ${theme === "dark" ? "claro" : "oscuro"}`}
-              >
-                <span className="text-xl">{theme === "dark" ? "🌙" : "☀️"}</span>
-              </button>
               <Button onClick={() => setSearchOpen(true)} variant="primary">
                 🔍 Buscar
               </Button>
@@ -215,17 +186,17 @@ const HomePage: React.FC = () => {
                   {device.acOn ? "🔛 Encendido" : "⏸ Apagado"}
                 </Button>
 
-                <div className="flex items-center gap-4 bg-slate-50 dark:bg-slate-700 rounded-xl px-6 py-4 shadow-inner">
-                  <span className="font-semibold text-slate-700 dark:text-slate-300">Temperatura</span>
+                <div className="flex items-center gap-4 bg-slate-50 rounded-xl px-6 py-4 shadow-inner">
+                  <span className="font-semibold text-slate-700">Temperatura</span>
                   <input
                     type="number"
-                    className="w-20 rounded-lg border-2 border-slate-300 dark:border-slate-600 px-3 py-2 bg-white dark:bg-slate-800 font-bold text-xl text-center text-blue-600 focus:border-blue-500 focus:outline-none"
+                    className="w-20 rounded-lg border-2 border-slate-300 px-3 py-2 bg-white font-bold text-xl text-center text-blue-600 focus:border-blue-500 focus:outline-none"
                     value={device.setpoint}
                     onChange={(e) => changeSetpoint(Number(e.target.value))}
                     min={16}
                     max={30}
                   />
-                  <span className="font-semibold text-slate-600 dark:text-slate-400">°C</span>
+                  <span className="font-semibold text-slate-600">°C</span>
                 </div>
               </div>
 
@@ -237,8 +208,8 @@ const HomePage: React.FC = () => {
                     onClick={() => changeMode(m)}
                     className={`p-6 rounded-xl border-2 transition-all font-semibold text-lg ${
                       device.mode === m
-                        ? "border-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 shadow-lg"
-                        : "border-slate-200 dark:border-slate-600 hover:border-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                        ? "border-blue-500 bg-blue-50 text-blue-700 shadow-lg"
+                        : "border-slate-200 hover:border-blue-300 hover:bg-blue-50"
                     }`}
                     aria-pressed={device.mode === m}
                   >
@@ -260,13 +231,13 @@ const HomePage: React.FC = () => {
           <Card title="Consumo en Tiempo Real" icon="⚡">
             <div className="text-center space-y-4">
               <div className="text-5xl font-bold text-blue-600">{fmt(stats.kwhNow, 2)}</div>
-              <div className="text-xl font-semibold text-slate-700 dark:text-slate-400">kWh</div>
-              <div className="flex items-center justify-center gap-2 text-slate-600 dark:text-slate-400">
+              <div className="text-xl font-semibold text-slate-700">kWh</div>
+              <div className="flex items-center justify-center gap-2 text-slate-600">
                 <div className="w-3 h-3 bg-emerald-500 rounded-full animate-pulse" />
                 <span>Actualizado cada ~2s</span>
               </div>
-              <div className="bg-slate-50 dark:bg-slate-700 rounded-xl p-4 shadow-inner">
-                <div className="text-sm text-slate-600 dark:text-slate-400 mb-1">Emisiones estimadas</div>
+              <div className="bg-slate-50 rounded-xl p-4 shadow-inner">
+                <div className="text-sm text-slate-600 mb-1">Emisiones estimadas</div>
                 <div className="text-2xl font-bold flex items-center justify-center gap-2">
                   <span>🌱</span> {fmt(stats.co2Now, 0)} g CO₂/h
                 </div>
@@ -303,7 +274,7 @@ const HomePage: React.FC = () => {
           {/* Simulador */}
           <Card title="Simulador de Ahorro" icon="💰">
             <div className="space-y-4">
-              <p className="text-slate-700 dark:text-slate-400">
+              <p className="text-slate-700">
                 Estima el ahorro según tu modo y setpoint actuales.
               </p>
               <Button onClick={runSimulation} variant="primary" className="w-full py-3">
@@ -348,10 +319,10 @@ const HomePage: React.FC = () => {
                     setDevice((d) => ({ ...d, setpoint: p.setpoint, mode: p.mode, acOn: true }));
                     setToast(`Preset aplicado: ${p.label}`);
                   }}
-                  className="w-full p-4 rounded-xl border-2 border-slate-200 dark:border-slate-600 hover:border-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all text-left"
+                  className="w-full p-4 rounded-xl border-2 border-slate-200 hover:border-blue-400 hover:bg-blue-50 transition-all text-left"
                 >
                   <div className="font-semibold">{p.label}</div>
-                  <div className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                  <div className="text-sm text-slate-600 mt-1">
                     {p.mode === "frio" ? "❄ Frío" : p.mode === "calor" ? "🔥 Calor" : "💨 Ventilación"}
                   </div>
                 </button>
@@ -362,7 +333,7 @@ const HomePage: React.FC = () => {
           {/* Ayuda */}
           <Card title="Ayuda y Documentación" icon="📖">
             <div className="space-y-4">
-              <p className="text-slate-700 dark:text-slate-400">
+              <p className="text-slate-700">
                 ¿Dudas? Abre la guía rápida o la documentación completa.
               </p>
               <div className="grid grid-cols-2 gap-3">
@@ -377,16 +348,16 @@ const HomePage: React.FC = () => {
       {/* Search Modal */}
       {searchOpen && (
         <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={() => setSearchOpen(false)}>
-          <div className="w-full max-w-2xl bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 p-8" onClick={(e) => e.stopPropagation()}>
+          <div className="w-full max-w-2xl bg-white rounded-2xl shadow-2xl border border-slate-200 p-8" onClick={(e) => e.stopPropagation()}>
             <h2 className="text-2xl font-bold mb-6 flex items-center gap-3">
               <span className="text-3xl">🔍</span> Búsqueda rápida
             </h2>
             <input
               autoFocus
               placeholder="Escribe: programación, consumo, mantenimiento…"
-              className="w-full rounded-xl border-2 border-slate-300 dark:border-slate-600 px-4 py-3 bg-white dark:bg-slate-700 text-lg focus:border-blue-500 focus:outline-none"
+              className="w-full rounded-xl border-2 border-slate-300 px-4 py-3 bg-white text-lg focus:border-blue-500 focus:outline-none"
             />
-            <p className="text-slate-600 dark:text-slate-400 mt-4">💡 Las sugerencias aparecerán mientras escribes.</p>
+            <p className="text-slate-600 mt-4">💡 Las sugerencias aparecerán mientras escribes.</p>
           </div>
         </div>
       )}
@@ -394,7 +365,7 @@ const HomePage: React.FC = () => {
       {/* Help Modal */}
       {helpOpen && (
         <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={() => setHelpOpen(false)}>
-          <div className="w-full max-w-3xl bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 p-8" onClick={(e) => e.stopPropagation()}>
+          <div className="w-full max-w-3xl bg-white rounded-2xl shadow-2xl border border-slate-200 p-8" onClick={(e) => e.stopPropagation()}>
             <h2 className="text-2xl font-bold mb-6 flex items-center gap-3">
               <span className="text-3xl">📖</span> Guía rápida
             </h2>
@@ -403,23 +374,23 @@ const HomePage: React.FC = () => {
                 <span className="text-2xl">🎛</span>
                 <div>
                   <div className="font-bold text-lg">Control Rápido</div>
-                  <div className="text-slate-700 dark:text-slate-400">Encender/Apagar y cambiar modo desde el panel principal.</div>
+                  <div className="text-slate-700">Encender/Apagar y cambiar modo desde el panel principal.</div>
                 </div>
               </div>
               <div className="flex items-start gap-4">
                 <span className="text-2xl">⚡</span>
                 <div>
                   <div className="font-bold text-lg">Presets</div>
-                  <div className="text-slate-700 dark:text-slate-400">Usa configuraciones predefinidas para aplicar ajustes rápidamente.</div>
+                  <div className="text-slate-700">Usa configuraciones predefinidas para aplicar ajustes rápidamente.</div>
                 </div>
               </div>
               <div className="flex items-start gap-4">
                 <span className="text-2xl">⌨</span>
                 <div>
                   <div className="font-bold text-lg">Atajos de teclado</div>
-                  <div className="text-slate-700 dark:text-slate-400">
-                    <kbd className="px-2 py-1 rounded bg-slate-100 dark:bg-slate-700 font-mono">Ctrl+K</kbd> abre búsqueda,
-                    <kbd className="px-2 py-1 rounded bg-slate-100 dark:bg-slate-700 font-mono ml-2">?</kbd> abre ayuda.
+                  <div className="text-slate-700">
+                    <kbd className="px-2 py-1 rounded bg-slate-100 font-mono">Ctrl+K</kbd> abre búsqueda,
+                    <kbd className="px-2 py-1 rounded bg-slate-100 font-mono ml-2">?</kbd> abre ayuda.
                   </div>
                 </div>
               </div>
