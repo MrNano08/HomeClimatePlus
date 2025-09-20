@@ -45,7 +45,7 @@ function useKeyboardShortcuts(openSearch: () => void, openHelp: () => void) {
 const RootLayout: React.FC = () => {
   const [searchOpen, setSearchOpen] = React.useState(false);
   const [helpOpen, setHelpOpen] = React.useState(false);
-  const [menuOpen, setMenuOpen] = React.useState(false); // <= móvil
+  const [menuOpen, setMenuOpen] = React.useState(false);
   const [session, setSession] = React.useState<Session | null>(() => readSession());
   const { pathname } = useLocation();
   const navigate = useNavigate();
@@ -64,7 +64,7 @@ const RootLayout: React.FC = () => {
     };
   }, []);
 
-  // Abrir modales desde cualquier parte
+  // Eventos globales para abrir modales
   React.useEffect(() => {
     const openHelp = () => setHelpOpen(true);
     const openSearch = () => setSearchOpen(true);
@@ -80,7 +80,7 @@ const RootLayout: React.FC = () => {
     };
   }, []);
 
-  // Redirigir a /login si no hay sesión estando en rutas protegidas
+  // Redirigir a /login si no hay sesión en rutas protegidas
   React.useEffect(() => {
     if (!session && pathname !== "/login" && pathname !== "/register") {
       navigate({ to: "/login", replace: true });
@@ -102,7 +102,6 @@ const RootLayout: React.FC = () => {
     <div className="hc-page min-h-dvh">
       <header className="hc-header border-slate-200">
         <div className="w-full px-3 sm:px-4 py-2 sm:py-3 flex items-center justify-between gap-2">
-          {/* Izquierda: logo */}
           <Link to="/" className="inline-flex items-center gap-2 sm:gap-3 shrink-0">
             <div className="w-9 h-9 sm:w-10 sm:h-10 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl grid place-items-center shadow">
               <span className="text-white font-bold text-base sm:text-lg">H</span>
@@ -112,10 +111,9 @@ const RootLayout: React.FC = () => {
             </h1>
           </Link>
 
-          {/* Centro-vacío para que no empuje el logo en móvil */}
           <div className="flex-1" />
 
-          {/* Acciones desktop */}
+          {/* Desktop */}
           <nav className="hidden sm:flex items-center gap-2">
             <button className="hc-btn-primary" onClick={() => setSearchOpen(true)}>🔎 Buscar</button>
             <button className="hc-btn-ghost" onClick={() => setHelpOpen(true)}>❓ Ayuda</button>
@@ -135,7 +133,7 @@ const RootLayout: React.FC = () => {
             )}
           </nav>
 
-          {/* Botón hamburguesa móvil */}
+          {/* Móvil */}
           <button
             className="sm:hidden hc-icon"
             aria-label="Abrir menú"
@@ -147,20 +145,11 @@ const RootLayout: React.FC = () => {
           </button>
         </div>
 
-        {/* Menú móvil desplegable */}
         {menuOpen && (
-          <div
-            id="hc-mobile-menu"
-            className="sm:hidden border-t border-slate-200 px-3 pb-3"
-          >
+          <div id="hc-mobile-menu" className="sm:hidden border-t border-slate-200 px-3 pb-3">
             <div className="mt-3 grid gap-2">
-              <button className="hc-btn-primary" onClick={() => { setMenuOpen(false); setSearchOpen(true); }}>
-                🔎 Buscar
-              </button>
-              <button className="hc-btn-ghost" onClick={() => { setMenuOpen(false); setHelpOpen(true); }}>
-                ❓ Ayuda
-              </button>
-
+              <button className="hc-btn-primary" onClick={() => { setMenuOpen(false); setSearchOpen(true); }}>🔎 Buscar</button>
+              <button className="hc-btn-ghost" onClick={() => { setMenuOpen(false); setHelpOpen(true); }}>❓ Ayuda</button>
               {session ? (
                 <>
                   <div className="text-sm px-1">👋 {session.name} <span className="opacity-70">({session.email})</span></div>
@@ -168,16 +157,8 @@ const RootLayout: React.FC = () => {
                 </>
               ) : (
                 <>
-                  {!onLoginPage && (
-                    <Link to="/login" className="hc-btn-ghost" onClick={() => setMenuOpen(false)}>
-                      Entrar
-                    </Link>
-                  )}
-                  {!onRegisterPage && (
-                    <Link to="/register" className="hc-btn-primary" onClick={() => setMenuOpen(false)}>
-                      Crear cuenta
-                    </Link>
-                  )}
+                  {!onLoginPage && <Link to="/login" className="hc-btn-ghost" onClick={() => setMenuOpen(false)}>Entrar</Link>}
+                  {!onRegisterPage && <Link to="/register" className="hc-btn-primary" onClick={() => setMenuOpen(false)}>Crear cuenta</Link>}
                 </>
               )}
             </div>
@@ -191,11 +172,8 @@ const RootLayout: React.FC = () => {
 
       {/* Modal búsqueda */}
       {searchOpen && (
-        <div role="dialog" aria-modal="true"
-             className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4"
-             onClick={() => setSearchOpen(false)}>
-          <div className="w-full max-w-2xl bg-white rounded-2xl shadow-2xl border border-slate-200 p-6 sm:p-8"
-               onClick={(e) => e.stopPropagation()}>
+        <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4" onClick={() => setSearchOpen(false)}>
+          <div className="w-full max-w-2xl bg-white rounded-2xl shadow-2xl border border-slate-200 p-6 sm:p-8" onClick={(e) => e.stopPropagation()}>
             <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 flex items-center gap-3">
               <span className="text-2xl sm:text-3xl">🔍</span> Búsqueda rápida
             </h2>
@@ -207,18 +185,15 @@ const RootLayout: React.FC = () => {
 
       {/* Modal ayuda */}
       {helpOpen && (
-        <div role="dialog" aria-modal="true"
-             className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4"
-             onClick={() => setHelpOpen(false)}>
-          <div className="w-full max-w-3xl bg-white rounded-2xl shadow-2xl border border-slate-200 p-6 sm:p-8"
-               onClick={(e) => e.stopPropagation()}>
+        <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4" onClick={() => setHelpOpen(false)}>
+          <div className="w-full max-w-3xl bg-white rounded-2xl shadow-2xl border border-slate-200 p-6 sm:p-8" onClick={(e) => e.stopPropagation()}>
             <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 flex items-center gap-3">
               <span className="text-2xl sm:text-3xl">📖</span> Guía rápida
             </h2>
             <div className="space-y-4 mb-6 sm:mb-8">
               <Item icon="🎛" title="Control Rápido">Enciende, apaga y cambia de modo desde el panel principal.</Item>
               <Item icon="⚡" title="Presets">Ajusta el equipo en un clic con configuraciones predefinidas.</Item>
-              <Item icon="⌨" title="Atajos de teclado">
+              <Item icon="⌨" title="Atajos">
                 <kbd className="px-2 py-1 rounded bg-slate-100 font-mono">Ctrl+K</kbd> abre búsqueda,
                 <kbd className="px-2 py-1 rounded bg-slate-100 font-mono ml-2">?</kbd> abre esta guía.
               </Item>
@@ -248,14 +223,25 @@ const Item: React.FC<React.PropsWithChildren<{icon: string; title: string}>> = (
   </div>
 );
 
-/* ===== Rutas (con login por defecto) ===== */
-const rootRoute = createRootRoute({ component: RootLayout });
+/* ===== Rutas ===== */
+
+// <<< AQUI: notFoundComponent en el root >>>
+const NotFound = React.lazy(() => import("../Pages/NotFoundPage"));
+
+const rootRoute = createRootRoute({
+  component: RootLayout,
+  notFoundComponent: () => (
+    <React.Suspense fallback={<div>Cargando…</div>}>
+      <NotFound />
+    </React.Suspense>
+  ),
+});
 
 const HomePage = React.lazy(() => import("../Pages/HomePage"));
 const LoginPage = React.lazy(() => import("../Pages/LoginPage"));
 const RegisterPage = React.lazy(() => import("../Pages/RegisterPage"));
-const NotFoundPage = React.lazy(() => import("../Pages/NotFoundPage"));
 
+/** "/" protegido: si no hay sesión, redirige a /login */
 const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/",
@@ -298,21 +284,10 @@ const registerRoute = createRoute({
   ),
 });
 
-const notFoundRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: "*",
-  component: () => (
-    <React.Suspense fallback={<div>Cargando…</div>}>
-      <NotFoundPage />
-    </React.Suspense>
-  ),
-});
-
 const routeTree = rootRoute.addChildren([
   indexRoute,
   loginRoute,
   registerRoute,
-  notFoundRoute,
 ]);
 
 export const router = createRouter({ routeTree });
