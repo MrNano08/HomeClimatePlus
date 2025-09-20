@@ -11,10 +11,7 @@ const fmt = (n: number, digits = 1) =>
 const Card: React.FC<React.PropsWithChildren<{ title: string; className?: string; icon?: string }>> = ({
   title, className, icon, children
 }) => (
-  <section
-    className={`hc-card p-6 transition-all duration-300 hover:shadow-2xl ${className ?? ""}`}
-    aria-label={title}
-  >
+  <section className={`hc-card p-6 transition-all duration-300 hover:shadow-2xl ${className ?? ""}`} aria-label={title}>
     <div className="flex items-center gap-3 mb-4">
       {icon && <span className="text-2xl">{icon}</span>}
       <h3 className="text-xl font-bold">{title}</h3>
@@ -37,10 +34,7 @@ const Button: React.FC<
       "bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300",
   };
   return (
-    <button
-      className={`px-4 py-2 rounded-xl font-semibold transition-all duration-300 ${variants[variant]} ${className}`}
-      {...props}
-    >
+    <button className={`px-4 py-2 rounded-xl font-semibold transition-all duration-300 ${variants[variant]} ${className}`} {...props}>
       {children}
     </button>
   );
@@ -118,11 +112,7 @@ const HomePage: React.FC = () => {
         <Card title="Control Rápido" icon="🎛" className="md:col-span-2">
           <div className="space-y-6">
             <div className="flex flex-wrap items-center gap-6">
-              <Button
-                onClick={toggleAC}
-                variant={device.acOn ? "success" : "ghost"}
-                className="px-8 py-4 text-lg font-bold"
-              >
+              <Button onClick={toggleAC} variant={device.acOn ? "success" : "ghost"} className="px-8 py-4 text-lg font-bold">
                 {device.acOn ? "🔛 Encendido" : "⏸ Apagado"}
               </Button>
 
@@ -133,8 +123,7 @@ const HomePage: React.FC = () => {
                   className="w-20 rounded-lg border-2 border-slate-300 px-3 py-2 bg-white font-bold text-xl text-center text-blue-600 focus:border-blue-500 focus:outline-none"
                   value={device.setpoint}
                   onChange={(e) => changeSetpoint(Number(e.target.value))}
-                  min={16}
-                  max={30}
+                  min={16} max={30}
                 />
                 <span className="font-semibold text-slate-600">°C</span>
               </div>
@@ -160,9 +149,7 @@ const HomePage: React.FC = () => {
             </div>
 
             <div>
-              <Button onClick={undoLast} disabled={!lastSnapshot} className="disabled:opacity-40">
-                ↶ Deshacer
-              </Button>
+              <Button onClick={undoLast} disabled={!lastSnapshot} className="disabled:opacity-40">↶ Deshacer</Button>
             </div>
           </div>
         </Card>
@@ -187,24 +174,13 @@ const HomePage: React.FC = () => {
 
         {/* Mantenimiento */}
         <Card title="Mantenimiento" icon="🔧">
-          {stats.maintenanceDue ? (
-            <div className="rounded-xl border-2 border-amber-300 bg-gradient-to-r from-amber-50 to-orange-50 text-amber-900 p-4 mb-4">
-              <div className="flex items-center gap-2 mb-2">
-                <span className="text-xl">⚠</span>
-                <span className="font-bold">Atención requerida</span>
-              </div>
-              <p className="mb-3">Filtro con horas altas de uso.</p>
-              <button className="text-amber-700 underline font-medium hover:text-amber-800">Ver pasos →</button>
+          <div className="rounded-xl border-2 border-emerald-300 bg-gradient-to-r from-emerald-50 to-green-50 text-emerald-900 p-4 mb-4">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-xl">✅</span>
+              <span className="font-bold">Todo al día</span>
             </div>
-          ) : (
-            <div className="rounded-xl border-2 border-emerald-300 bg-gradient-to-r from-emerald-50 to-green-50 text-emerald-900 p-4 mb-4">
-              <div className="flex items-center gap-2 mb-2">
-                <span className="text-xl">✅</span>
-                <span className="font-bold">Todo al día</span>
-              </div>
-              <p>Próxima revisión sugerida en 30 días.</p>
-            </div>
-          )}
+            <p>Próxima revisión sugerida en 30 días.</p>
+          </div>
           <div className="grid grid-cols-2 gap-3">
             <Button>📊 Historial</Button>
             <Button>🔔 Alertas</Button>
@@ -214,12 +190,8 @@ const HomePage: React.FC = () => {
         {/* Simulador */}
         <Card title="Simulador de Ahorro" icon="💰">
           <div className="space-y-4">
-            <p className="text-slate-700">
-              Estima el ahorro según tu modo y setpoint actuales.
-            </p>
-            <Button onClick={runSimulation} variant="primary" className="w-full py-3">
-              🚀 Ejecutar simulación
-            </Button>
+            <p className="text-slate-700">Estima el ahorro según tu modo y setpoint actuales.</p>
+            <Button onClick={runSimulation} variant="primary" className="w-full py-3">🚀 Ejecutar simulación</Button>
           </div>
         </Card>
 
@@ -227,18 +199,14 @@ const HomePage: React.FC = () => {
         <Card title="Automatizaciones" icon="🤖">
           <div className="space-y-4">
             <div className="flex items-center gap-3">
-              <input
-                id="geo"
-                type="checkbox"
-                checked={geoEnabled}
-                onChange={(e) => setGeoEnabled(e.target.checked)}
-                className="w-5 h-5 rounded border-2 border-slate-300"
-              />
+              <input id="geo" type="checkbox" checked={geoEnabled}
+                     onChange={(e) => setGeoEnabled(e.target.checked)}
+                     className="w-5 h-5 rounded border-2 border-slate-300" />
               <label htmlFor="geo" className="font-medium">🌍 Control por geolocalización</label>
             </div>
             {geoEnabled && (
               <div className="rounded-xl border-2 border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-900 p-3 text-sm">
-                📍 Cuando estés cerca de casa se activará tu escenario elegido. Puedes desactivarlo en cualquier momento.
+                📍 Cuando estés cerca de casa se activará tu escenario elegido.
               </div>
             )}
             <div className="grid grid-cols-2 gap-3">
@@ -270,14 +238,17 @@ const HomePage: React.FC = () => {
           </div>
         </Card>
 
-        {/* Ayuda */}
+        {/* Ayuda y Documentación */}
         <Card title="Ayuda y Documentación" icon="📖">
           <div className="space-y-4">
-            <p className="text-slate-700">
-              ¿Dudas? Usa el botón de Ayuda del encabezado o revisa la documentación.
-            </p>
+            <p className="text-slate-700">¿Dudas? Abre la guía rápida o la documentación.</p>
             <div className="grid grid-cols-2 gap-3">
-              <Button onClick={() => alert("Abre el modal global de Ayuda (en header).")}>Ver guía</Button>
+              {/* <<< AQUÍ EL CAMBIO >>> */}
+              <Button
+                onClick={() => window.dispatchEvent(new Event("hc-open-help"))}
+              >
+                Ver guía
+              </Button>
               <Button>Documentación</Button>
             </div>
           </div>

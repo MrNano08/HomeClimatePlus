@@ -40,7 +40,7 @@ function useKeyboardShortcuts(openSearch: () => void, openHelp: () => void) {
   }, [openHelp, openSearch]);
 }
 
-/* ===== Layout root con header global ===== */
+/* ===== Layout root con header global y bus de eventos ===== */
 const RootLayout: React.FC = () => {
   const [searchOpen, setSearchOpen] = React.useState(false);
   const [helpOpen, setHelpOpen] = React.useState(false);
@@ -49,6 +49,7 @@ const RootLayout: React.FC = () => {
 
   useKeyboardShortcuts(() => setSearchOpen(true), () => setHelpOpen(true));
 
+  // Sincronizar sesión en el header
   React.useEffect(() => {
     const update = () => setSession(readSession());
     const onStorage = (e: StorageEvent) => { if (e.key === AUTH_KEY) update(); };
@@ -59,6 +60,24 @@ const RootLayout: React.FC = () => {
       window.removeEventListener("hc-auth-changed", update as EventListener);
     };
   }, []);
+
+  // --- NUEVO: escuchar eventos globales para abrir modales ---
+  React.useEffect(() => {
+    const openHelp = () => setHelpOpen(true);
+    const openSearch = () => setSearchOpen(true);
+    window.addEventListener("hc-open-help", openHelp as EventListener);
+    window.addEventListener("hc-open-search", openSearch as EventListener);
+    // (Opcional) API global por si quieres llamarla desde consola o componentes
+    (window as any).hcOpenHelp = () => window.dispatchEvent(new Event("hc-open-help"));
+    (window as any).hcOpenSearch = () => window.dispatchEvent(new Event("hc-open-search"));
+    return () => {
+      window.removeEventListener("hc-open-help", openHelp as EventListener);
+      window.removeEventListener("hc-open-search", openSearch as EventListener);
+      delete (window as any).hcOpenHelp;
+      delete (window as any).hcOpenSearch;
+    };
+  }, []);
+  // -----------------------------------------------------------
 
   const onLogout = () => {
     localStorage.removeItem(AUTH_KEY);
@@ -109,7 +128,7 @@ const RootLayout: React.FC = () => {
         <Outlet />
       </main>
 
-      {/* Modales globales */}
+      {/* Modal de búsqueda */}
       {searchOpen && (
         <div role="dialog" aria-modal="true"
              className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4"
@@ -125,6 +144,7 @@ const RootLayout: React.FC = () => {
         </div>
       )}
 
+      {/* Modal de ayuda */}
       {helpOpen && (
         <div role="dialog" aria-modal="true"
              className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4"
@@ -135,30 +155,25 @@ const RootLayout: React.FC = () => {
               <span className="text-3xl">📖</span> Guía rápida
             </h2>
             <div className="space-y-4 mb-8">
-              <div className="flex items-start gap-4">
-                <span className="text-2xl">🎛</span>
-                <div>
-                  <div className="font-bold text-lg">Control Rápido</div>
-                  <div className="text-slate-700">Enciende, apaga y cambia modo desde el panel principal.</div>
-                </div>
-              </div>
-              <div className="flex items-start gap-4">
-                <span className="text-2xl">⚡</span>
-                <div>
-                  <div className="font-bold text-lg">Presets</div>
-                  <div className="text-slate-700">Aplica configuraciones predefinidas rápidamente.</div>
-                </div>
-              </div>
-              <div className="flex items-start gap-4">
-                <span className="text-2xl">⌨</span>
-                <div>
-                  <div className="font-bold text-lg">Atajos</div>
-                  <div className="text-slate-700">
-                    <kbd className="px-2 py-1 rounded bg-slate-100 font-mono">Ctrl+K</kbd> abre búsqueda,
-                    <kbd className="px-2 py-1 rounded bg-slate-100 font-mono ml-2">?</kbd> abre ayuda.
-                  </div>
-                </div>
-              </div>
+              <Item icon="🎛" title="Control Rápido">
+                Enciende, apaga y cambia de modo desde el panel principal.
+              </Item>
+              <Item icon="⚡" title="Presets">
+                Aplica configuraciones predefinidas para ajustar el equipo en un clic.
+              </Item>
+              <Item icon="⌨" title="Atajos de teclado">
+                <kbd className="px-2 py-1 rounded bg-slate-100 font-mono">Ctrl+K</kbd> abre búsqueda,
+                <kbd className="px-2 py-1 rounded bg-slate-100 font-mono ml-2">?</kbd> abre esta guía.
+              </Item>
+              <Item icon="🌍" title="Geolocalización">
+                Activa “Control por geolocalización” para disparar escenas al acercarte a casa.
+              </Item>
+              <Item icon="💰" title="Simulador de ahorro">
+                Estima el ahorro según el modo y setpoint actuales.
+              </Item>
+              <Item icon="🔧" title="Mantenimiento">
+                Revisa el estado del filtro y consulta el historial/alertas.
+              </Item>
             </div>
             <div className="text-right">
               <button className="hc-btn-primary" onClick={() => setHelpOpen(false)}>✓ Entendido</button>
@@ -172,7 +187,17 @@ const RootLayout: React.FC = () => {
   );
 };
 
-/* ===== Rutas ===== */
+const Item: React.FC<React.PropsWithChildren<{icon: string; title: string}>> = ({ icon, title, children }) => (
+  <div className="flex items-start gap-4">
+    <span className="text-2xl">{icon}</span>
+    <div>
+      <div className="font-bold text-lg">{title}</div>
+      <div className="text-slate-700">{children}</div>
+    </div>
+  </div>
+);
+
+/* ===== Rutas (con login por defecto) ===== */
 const rootRoute = createRootRoute({ component: RootLayout });
 
 const HomePage = React.lazy(() => import("../Pages/HomePage"));
@@ -180,10 +205,6 @@ const LoginPage = React.lazy(() => import("../Pages/LoginPage"));
 const RegisterPage = React.lazy(() => import("../Pages/RegisterPage"));
 const NotFoundPage = React.lazy(() => import("../Pages/NotFoundPage"));
 
-/**
- * Ruta raíz "/" -> si NO hay sesión, va a /login (login por defecto).
- * Si hay sesión, muestra HomePage.
- */
 const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/",
@@ -201,7 +222,6 @@ const indexRoute = createRoute({
 const loginRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/login",
-  // Si ya hay sesión y el usuario viene a /login, mándalo a "/"
   beforeLoad: () => {
     const session = readSession();
     if (session) throw redirect({ to: "/" });
@@ -246,9 +266,6 @@ const routeTree = rootRoute.addChildren([
 
 export const router = createRouter({ routeTree });
 
-// Tipado del router
 declare module "@tanstack/react-router" {
-  interface Register {
-    router: typeof router;
-  }
+  interface Register { router: typeof router; }
 }
