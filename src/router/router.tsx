@@ -7,6 +7,7 @@ import {
   Link,
   redirect,
   useLocation,
+  useNavigate,
 } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/router-devtools";
 
@@ -46,6 +47,7 @@ const RootLayout: React.FC = () => {
   const [helpOpen, setHelpOpen] = React.useState(false);
   const [session, setSession] = React.useState<Session | null>(() => readSession());
   const { pathname } = useLocation();
+  const navigate = useNavigate();
 
   useKeyboardShortcuts(() => setSearchOpen(true), () => setHelpOpen(true));
 
@@ -61,13 +63,12 @@ const RootLayout: React.FC = () => {
     };
   }, []);
 
-  // --- NUEVO: escuchar eventos globales para abrir modales ---
+  // Abrir modales desde cualquier parte
   React.useEffect(() => {
     const openHelp = () => setHelpOpen(true);
     const openSearch = () => setSearchOpen(true);
     window.addEventListener("hc-open-help", openHelp as EventListener);
     window.addEventListener("hc-open-search", openSearch as EventListener);
-    // (Opcional) API global por si quieres llamarla desde consola o componentes
     (window as any).hcOpenHelp = () => window.dispatchEvent(new Event("hc-open-help"));
     (window as any).hcOpenSearch = () => window.dispatchEvent(new Event("hc-open-search"));
     return () => {
@@ -77,12 +78,19 @@ const RootLayout: React.FC = () => {
       delete (window as any).hcOpenSearch;
     };
   }, []);
-  // -----------------------------------------------------------
+
+  // >>> Redirección automática a /login si no hay sesión <<<
+  React.useEffect(() => {
+    if (!session && pathname !== "/login" && pathname !== "/register") {
+      navigate({ to: "/login", replace: true });
+    }
+  }, [session, pathname, navigate]);
 
   const onLogout = () => {
     localStorage.removeItem(AUTH_KEY);
-    window.dispatchEvent(new Event("hc-auth-changed"));
+    window.dispatchEvent(new Event("hc-auth-changed")); // avisar a toda la app
     setSession(null);
+    navigate({ to: "/login", replace: true }); // <-- ir al login
   };
 
   const onLoginPage = pathname === "/login";
