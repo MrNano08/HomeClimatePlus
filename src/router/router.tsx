@@ -41,10 +41,11 @@ function useKeyboardShortcuts(openSearch: () => void, openHelp: () => void) {
   }, [openHelp, openSearch]);
 }
 
-/* ===== Layout root con header global y bus de eventos ===== */
+/* ===== Layout root con header responsive y bus de eventos ===== */
 const RootLayout: React.FC = () => {
   const [searchOpen, setSearchOpen] = React.useState(false);
   const [helpOpen, setHelpOpen] = React.useState(false);
+  const [menuOpen, setMenuOpen] = React.useState(false); // <= móvil
   const [session, setSession] = React.useState<Session | null>(() => readSession());
   const { pathname } = useLocation();
   const navigate = useNavigate();
@@ -79,7 +80,7 @@ const RootLayout: React.FC = () => {
     };
   }, []);
 
-  // >>> Redirección automática a /login si no hay sesión <<<
+  // Redirigir a /login si no hay sesión estando en rutas protegidas
   React.useEffect(() => {
     if (!session && pathname !== "/login" && pathname !== "/register") {
       navigate({ to: "/login", replace: true });
@@ -88,9 +89,10 @@ const RootLayout: React.FC = () => {
 
   const onLogout = () => {
     localStorage.removeItem(AUTH_KEY);
-    window.dispatchEvent(new Event("hc-auth-changed")); // avisar a toda la app
+    window.dispatchEvent(new Event("hc-auth-changed"));
     setSession(null);
-    navigate({ to: "/login", replace: true }); // <-- ir al login
+    setMenuOpen(false);
+    navigate({ to: "/login", replace: true });
   };
 
   const onLoginPage = pathname === "/login";
@@ -99,25 +101,28 @@ const RootLayout: React.FC = () => {
   return (
     <div className="hc-page min-h-dvh">
       <header className="hc-header border-slate-200">
-        <div className="w-full px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Link to="/" className="inline-flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl grid place-items-center shadow">
-                <span className="text-white font-bold text-lg">H</span>
-              </div>
-              <h1 className="text-2xl font-bold text-slate-800">
-                HomeClimate<span className="text-blue-600">+</span>
-              </h1>
-            </Link>
-          </div>
+        <div className="w-full px-3 sm:px-4 py-2 sm:py-3 flex items-center justify-between gap-2">
+          {/* Izquierda: logo */}
+          <Link to="/" className="inline-flex items-center gap-2 sm:gap-3 shrink-0">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl grid place-items-center shadow">
+              <span className="text-white font-bold text-base sm:text-lg">H</span>
+            </div>
+            <h1 className="text-xl sm:text-2xl font-bold text-slate-800">
+              HomeClimate<span className="text-blue-600">+</span>
+            </h1>
+          </Link>
 
-          <nav className="flex items-center gap-2">
+          {/* Centro-vacío para que no empuje el logo en móvil */}
+          <div className="flex-1" />
+
+          {/* Acciones desktop */}
+          <nav className="hidden sm:flex items-center gap-2">
             <button className="hc-btn-primary" onClick={() => setSearchOpen(true)}>🔎 Buscar</button>
             <button className="hc-btn-ghost" onClick={() => setHelpOpen(true)}>❓ Ayuda</button>
 
             {session ? (
               <>
-                <span className="text-sm ml-2">
+                <span className="text-sm ml-2 truncate max-w-[180px]">
                   👋 {session.name} <span className="opacity-70">({session.email})</span>
                 </span>
                 <button className="hc-btn-ghost" onClick={onLogout}>Cerrar sesión</button>
@@ -129,59 +134,97 @@ const RootLayout: React.FC = () => {
               </>
             )}
           </nav>
+
+          {/* Botón hamburguesa móvil */}
+          <button
+            className="sm:hidden hc-icon"
+            aria-label="Abrir menú"
+            aria-expanded={menuOpen}
+            aria-controls="hc-mobile-menu"
+            onClick={() => setMenuOpen((s) => !s)}
+          >
+            ☰
+          </button>
         </div>
+
+        {/* Menú móvil desplegable */}
+        {menuOpen && (
+          <div
+            id="hc-mobile-menu"
+            className="sm:hidden border-t border-slate-200 px-3 pb-3"
+          >
+            <div className="mt-3 grid gap-2">
+              <button className="hc-btn-primary" onClick={() => { setMenuOpen(false); setSearchOpen(true); }}>
+                🔎 Buscar
+              </button>
+              <button className="hc-btn-ghost" onClick={() => { setMenuOpen(false); setHelpOpen(true); }}>
+                ❓ Ayuda
+              </button>
+
+              {session ? (
+                <>
+                  <div className="text-sm px-1">👋 {session.name} <span className="opacity-70">({session.email})</span></div>
+                  <button className="hc-btn-ghost" onClick={onLogout}>Cerrar sesión</button>
+                </>
+              ) : (
+                <>
+                  {!onLoginPage && (
+                    <Link to="/login" className="hc-btn-ghost" onClick={() => setMenuOpen(false)}>
+                      Entrar
+                    </Link>
+                  )}
+                  {!onRegisterPage && (
+                    <Link to="/register" className="hc-btn-primary" onClick={() => setMenuOpen(false)}>
+                      Crear cuenta
+                    </Link>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        )}
       </header>
 
-      <main className="w-full px-4 py-6">
+      <main className="w-full px-3 sm:px-4 py-4 sm:py-6">
         <Outlet />
       </main>
 
-      {/* Modal de búsqueda */}
+      {/* Modal búsqueda */}
       {searchOpen && (
         <div role="dialog" aria-modal="true"
              className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4"
              onClick={() => setSearchOpen(false)}>
-          <div className="w-full max-w-2xl bg-white rounded-2xl shadow-2xl border border-slate-200 p-8"
+          <div className="w-full max-w-2xl bg-white rounded-2xl shadow-2xl border border-slate-200 p-6 sm:p-8"
                onClick={(e) => e.stopPropagation()}>
-            <h2 className="text-2xl font-bold mb-6 flex items-center gap-3">
-              <span className="text-3xl">🔍</span> Búsqueda rápida
+            <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 flex items-center gap-3">
+              <span className="text-2xl sm:text-3xl">🔍</span> Búsqueda rápida
             </h2>
-            <input autoFocus className="hc-input text-lg" placeholder="Escribe para buscar…" />
-            <p className="text-slate-600 mt-4">💡 Las sugerencias aparecerán mientras escribes.</p>
+            <input autoFocus className="hc-input text-base sm:text-lg" placeholder="Escribe para buscar…" />
+            <p className="text-slate-600 mt-3 sm:mt-4">💡 Las sugerencias aparecerán mientras escribes.</p>
           </div>
         </div>
       )}
 
-      {/* Modal de ayuda */}
+      {/* Modal ayuda */}
       {helpOpen && (
         <div role="dialog" aria-modal="true"
              className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4"
              onClick={() => setHelpOpen(false)}>
-          <div className="w-full max-w-3xl bg-white rounded-2xl shadow-2xl border border-slate-200 p-8"
+          <div className="w-full max-w-3xl bg-white rounded-2xl shadow-2xl border border-slate-200 p-6 sm:p-8"
                onClick={(e) => e.stopPropagation()}>
-            <h2 className="text-2xl font-bold mb-6 flex items-center gap-3">
-              <span className="text-3xl">📖</span> Guía rápida
+            <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 flex items-center gap-3">
+              <span className="text-2xl sm:text-3xl">📖</span> Guía rápida
             </h2>
-            <div className="space-y-4 mb-8">
-              <Item icon="🎛" title="Control Rápido">
-                Enciende, apaga y cambia de modo desde el panel principal.
-              </Item>
-              <Item icon="⚡" title="Presets">
-                Aplica configuraciones predefinidas para ajustar el equipo en un clic.
-              </Item>
+            <div className="space-y-4 mb-6 sm:mb-8">
+              <Item icon="🎛" title="Control Rápido">Enciende, apaga y cambia de modo desde el panel principal.</Item>
+              <Item icon="⚡" title="Presets">Ajusta el equipo en un clic con configuraciones predefinidas.</Item>
               <Item icon="⌨" title="Atajos de teclado">
                 <kbd className="px-2 py-1 rounded bg-slate-100 font-mono">Ctrl+K</kbd> abre búsqueda,
                 <kbd className="px-2 py-1 rounded bg-slate-100 font-mono ml-2">?</kbd> abre esta guía.
               </Item>
-              <Item icon="🌍" title="Geolocalización">
-                Activa “Control por geolocalización” para disparar escenas al acercarte a casa.
-              </Item>
-              <Item icon="💰" title="Simulador de ahorro">
-                Estima el ahorro según el modo y setpoint actuales.
-              </Item>
-              <Item icon="🔧" title="Mantenimiento">
-                Revisa el estado del filtro y consulta el historial/alertas.
-              </Item>
+              <Item icon="🌍" title="Geolocalización">Dispara escenas al acercarte a casa.</Item>
+              <Item icon="💰" title="Simulador de ahorro">Estima el ahorro según modo y setpoint.</Item>
+              <Item icon="🔧" title="Mantenimiento">Consulta estado del filtro, historial y alertas.</Item>
             </div>
             <div className="text-right">
               <button className="hc-btn-primary" onClick={() => setHelpOpen(false)}>✓ Entendido</button>
@@ -196,11 +239,11 @@ const RootLayout: React.FC = () => {
 };
 
 const Item: React.FC<React.PropsWithChildren<{icon: string; title: string}>> = ({ icon, title, children }) => (
-  <div className="flex items-start gap-4">
-    <span className="text-2xl">{icon}</span>
+  <div className="flex items-start gap-3 sm:gap-4">
+    <span className="text-xl sm:text-2xl">{icon}</span>
     <div>
-      <div className="font-bold text-lg">{title}</div>
-      <div className="text-slate-700">{children}</div>
+      <div className="font-bold text-base sm:text-lg">{title}</div>
+      <div className="text-slate-700 text-sm sm:text-base">{children}</div>
     </div>
   </div>
 );
