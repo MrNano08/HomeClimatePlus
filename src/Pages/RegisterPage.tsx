@@ -5,7 +5,7 @@ type User = {
   id: number;
   name: string;
   email: string;
-  password: string; // Solo demo/localStorage
+  password: string;
   createdAt: string;
 };
 
@@ -14,7 +14,7 @@ const AUTH_KEY = "hc-auth";
 
 function loadUsers(): User[] {
   try {
-    return JSON.parse(localStorage.getItem(USERS_KEY) || "[]" ) as User[];
+    return JSON.parse(localStorage.getItem(USERS_KEY) || "[]") as User[];
   } catch {
     return [];
   }
@@ -24,6 +24,8 @@ function saveUsers(users: User[]) {
 }
 function saveAuth(session: { id: number; name: string; email: string }) {
   localStorage.setItem(AUTH_KEY, JSON.stringify(session));
+  // ← Notificar al header sin recargar
+  window.dispatchEvent(new Event("hc-auth-changed"));
 }
 
 const emailOk = (s: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s);
@@ -42,7 +44,6 @@ const RegisterPage: React.FC = () => {
   const [toast, setToast] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // Validaciones básicas
   const errors = useMemo(() => {
     const e: string[] = [];
     if (name.trim().length < 2) e.push("Nombre muy corto.");
@@ -53,7 +54,6 @@ const RegisterPage: React.FC = () => {
     return e;
   }, [name, email, pass1, pass2, accept]);
 
-  // Autocierre toast
   useEffect(() => {
     if (!toast) return;
     const t = setTimeout(() => setToast(null), 3000);
@@ -81,7 +81,7 @@ const RegisterPage: React.FC = () => {
       id,
       name: name.trim(),
       email: email.trim().toLowerCase(),
-      password: pass1, // Solo demo/local
+      password: pass1,
       createdAt: new Date().toISOString(),
     };
     users.push(user);
@@ -92,69 +92,42 @@ const RegisterPage: React.FC = () => {
     setTimeout(() => {
       setLoading(false);
       navigate({ to: "/" });
-    }, 500);
+    }, 400);
   };
 
   return (
     <div className="hc-page grid place-items-center p-4">
-      <div className="w-full max-w-md hc-card">
+      <div className="w-full max-w-md hc-card p-6">
         <header className="flex items-center justify-between mb-4">
           <h1 className="text-xl font-semibold">Crear cuenta</h1>
-          <Link to="/" className="hc-icon" title="Ir al inicio">
-            ⟵
-          </Link>
+          <Link to="/" className="hc-icon" title="Ir al inicio">⟵</Link>
         </header>
 
-        <p className="text-sm text-slate-600 dark:text-slate-300 mb-6">
+        <p className="text-sm text-slate-600 mb-6">
           Regístrate para comenzar a usar <span className="font-semibold">HomeClimate+</span>.
         </p>
 
         <form onSubmit={onSubmit} className="space-y-4">
           <div>
             <label className="block text-sm mb-1">Nombre</label>
-            <input
-              className="hc-input"
-              type="text"
-              required
-              minLength={2}
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Tu nombre"
-            />
+            <input className="hc-input" type="text" required minLength={2}
+              value={name} onChange={(e) => setName(e.target.value)} placeholder="Tu nombre" />
           </div>
 
           <div>
             <label className="block text-sm mb-1">Correo</label>
-            <input
-              className="hc-input"
-              type="email"
-              required
-              autoComplete="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="tucorreo@ejemplo.com"
-            />
+            <input className="hc-input" type="email" required autoComplete="email"
+              value={email} onChange={(e) => setEmail(e.target.value)} placeholder="tucorreo@ejemplo.com" />
           </div>
 
           <div>
             <label className="block text-sm mb-1">Contraseña</label>
             <div className="relative">
-              <input
-                className="hc-input pr-11"
-                type={showPass1 ? "text" : "password"}
-                required
-                minLength={6}
-                autoComplete="new-password"
-                value={pass1}
-                onChange={(e) => setPass1(e.target.value)}
-                placeholder="Mínimo 6 caracteres"
-              />
-              <button
-                type="button"
-                className="hc-icon absolute right-1 top-1/2 -translate-y-1/2"
-                onClick={() => setShowPass1((s) => !s)}
-                aria-label={showPass1 ? "Ocultar contraseña" : "Mostrar contraseña"}
-              >
+              <input className="hc-input pr-11" type={showPass1 ? "text" : "password"} required minLength={6}
+                autoComplete="new-password" value={pass1} onChange={(e) => setPass1(e.target.value)}
+                placeholder="Mínimo 6 caracteres" />
+              <button type="button" className="hc-icon absolute right-1 top-1/2 -translate-y-1/2"
+                onClick={() => setShowPass1((s) => !s)} aria-label={showPass1 ? "Ocultar contraseña" : "Mostrar contraseña"}>
                 {showPass1 ? "🙈" : "👁️"}
               </button>
             </div>
@@ -163,52 +136,28 @@ const RegisterPage: React.FC = () => {
           <div>
             <label className="block text-sm mb-1">Repetir contraseña</label>
             <div className="relative">
-              <input
-                className="hc-input pr-11"
-                type={showPass2 ? "text" : "password"}
-                required
-                minLength={6}
-                autoComplete="new-password"
-                value={pass2}
-                onChange={(e) => setPass2(e.target.value)}
-                placeholder="Repite la contraseña"
-              />
-              <button
-                type="button"
-                className="hc-icon absolute right-1 top-1/2 -translate-y-1/2"
-                onClick={() => setShowPass2((s) => !s)}
-                aria-label={showPass2 ? "Ocultar contraseña" : "Mostrar contraseña"}
-              >
+              <input className="hc-input pr-11" type={showPass2 ? "text" : "password"} required minLength={6}
+                autoComplete="new-password" value={pass2} onChange={(e) => setPass2(e.target.value)}
+                placeholder="Repite la contraseña" />
+              <button type="button" className="hc-icon absolute right-1 top-1/2 -translate-y-1/2"
+                onClick={() => setShowPass2((s) => !s)} aria-label={showPass2 ? "Ocultar contraseña" : "Mostrar contraseña"}>
                 {showPass2 ? "🙈" : "👁️"}
               </button>
             </div>
           </div>
 
           <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              className="size-4 rounded border"
-              checked={accept}
-              onChange={(e) => setAccept(e.target.checked)}
-            />
-            <span>
-              Acepto los <a className="underline" href="#" onClick={(e)=>e.preventDefault()}>términos y condiciones</a>.
-            </span>
+            <input type="checkbox" className="size-4 rounded border"
+              checked={accept} onChange={(e) => setAccept(e.target.checked)} />
+            <span>Acepto los <a className="underline" href="#" onClick={(e)=>e.preventDefault()}>términos y condiciones</a>.</span>
           </label>
 
-          <button
-            type="submit"
-            className="hc-btn-success w-full py-2"
-            disabled={loading}
-          >
+          <button type="submit" className="hc-btn-primary w-full py-2" disabled={loading}>
             {loading ? "Creando cuenta…" : "Crear cuenta"}
           </button>
 
-          <div className="text-center text-sm text-slate-600 dark:text-slate-300">
-            ¿Ya tienes cuenta?{" "}
-            <Link to="/login" className="underline">
-              Inicia sesión
-            </Link>
+          <div className="text-center text-sm text-slate-600">
+            ¿Ya tienes cuenta? <Link to="/login" className="underline">Inicia sesión</Link>
           </div>
         </form>
       </div>

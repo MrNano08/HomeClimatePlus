@@ -5,15 +5,15 @@ import {
   createRouter,
   Outlet,
   Link,
+  redirect,
+  useLocation,
 } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/router-devtools";
 
-/* ========================
-   SESIÓN (localStorage)
-======================== */
+/* ===== Auth (localStorage) ===== */
 type Session = { id: number; name: string; email: string };
 const AUTH_KEY = "hc-auth";
-function getSession(): Session | null {
+function readSession(): Session | null {
   try {
     const v = localStorage.getItem(AUTH_KEY);
     return v ? (JSON.parse(v) as Session) : null;
@@ -22,9 +22,7 @@ function getSession(): Session | null {
   }
 }
 
-/* ========================
-   ATAJOS GLOBALES
-======================== */
+/* ===== Atajos globales ===== */
 function useKeyboardShortcuts(openSearch: () => void, openHelp: () => void) {
   React.useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -42,15 +40,34 @@ function useKeyboardShortcuts(openSearch: () => void, openHelp: () => void) {
   }, [openHelp, openSearch]);
 }
 
-/* ========================
-   LAYOUT ROOT (Nav global)
-======================== */
+/* ===== Layout root con header global ===== */
 const RootLayout: React.FC = () => {
   const [searchOpen, setSearchOpen] = React.useState(false);
   const [helpOpen, setHelpOpen] = React.useState(false);
-  const session = getSession();
+  const [session, setSession] = React.useState<Session | null>(() => readSession());
+  const { pathname } = useLocation();
 
   useKeyboardShortcuts(() => setSearchOpen(true), () => setHelpOpen(true));
+
+  React.useEffect(() => {
+    const update = () => setSession(readSession());
+    const onStorage = (e: StorageEvent) => { if (e.key === AUTH_KEY) update(); };
+    window.addEventListener("storage", onStorage);
+    window.addEventListener("hc-auth-changed", update as EventListener);
+    return () => {
+      window.removeEventListener("storage", onStorage);
+      window.removeEventListener("hc-auth-changed", update as EventListener);
+    };
+  }, []);
+
+  const onLogout = () => {
+    localStorage.removeItem(AUTH_KEY);
+    window.dispatchEvent(new Event("hc-auth-changed"));
+    setSession(null);
+  };
+
+  const onLoginPage = pathname === "/login";
+  const onRegisterPage = pathname === "/register";
 
   return (
     <div className="hc-page min-h-dvh">
@@ -76,20 +93,12 @@ const RootLayout: React.FC = () => {
                 <span className="text-sm ml-2">
                   👋 {session.name} <span className="opacity-70">({session.email})</span>
                 </span>
-                <button
-                  className="hc-btn-ghost"
-                  onClick={() => {
-                    localStorage.removeItem(AUTH_KEY);
-                    window.location.href = "/";
-                  }}
-                >
-                  Cerrar sesión
-                </button>
+                <button className="hc-btn-ghost" onClick={onLogout}>Cerrar sesión</button>
               </>
             ) : (
               <>
-                <Link to="/login" className="hc-btn-ghost">Entrar</Link>
-                <Link to="/register" className="hc-btn-primary">Crear cuenta</Link>
+                {!onLoginPage && <Link to="/login" className="hc-btn-ghost">Entrar</Link>}
+                {!onRegisterPage && <Link to="/register" className="hc-btn-primary">Crear cuenta</Link>}
               </>
             )}
           </nav>
@@ -163,9 +172,7 @@ const RootLayout: React.FC = () => {
   );
 };
 
-/* ========================
-   RUTAS
-======================== */
+/* ===== Rutas ===== */
 const rootRoute = createRootRoute({ component: RootLayout });
 
 const HomePage = React.lazy(() => import("../Pages/HomePage"));
@@ -173,9 +180,17 @@ const LoginPage = React.lazy(() => import("../Pages/LoginPage"));
 const RegisterPage = React.lazy(() => import("../Pages/RegisterPage"));
 const NotFoundPage = React.lazy(() => import("../Pages/NotFoundPage"));
 
+/**
+ * Ruta raíz "/" -> si NO hay sesión, va a /login (login por defecto).
+ * Si hay sesión, muestra HomePage.
+ */
 const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/",
+  beforeLoad: () => {
+    const session = readSession();
+    if (!session) throw redirect({ to: "/login" });
+  },
   component: () => (
     <React.Suspense fallback={<div>Cargando…</div>}>
       <HomePage />
@@ -186,6 +201,11 @@ const indexRoute = createRoute({
 const loginRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/login",
+  // Si ya hay sesión y el usuario viene a /login, mándalo a "/"
+  beforeLoad: () => {
+    const session = readSession();
+    if (session) throw redirect({ to: "/" });
+  },
   component: () => (
     <React.Suspense fallback={<div>Cargando…</div>}>
       <LoginPage />
@@ -196,6 +216,10 @@ const loginRoute = createRoute({
 const registerRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/register",
+  beforeLoad: () => {
+    const session = readSession();
+    if (session) throw redirect({ to: "/" });
+  },
   component: () => (
     <React.Suspense fallback={<div>Cargando…</div>}>
       <RegisterPage />

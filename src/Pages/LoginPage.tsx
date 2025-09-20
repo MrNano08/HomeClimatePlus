@@ -5,7 +5,7 @@ type User = {
   id: number;
   name: string;
   email: string;
-  password: string; // Nota: solo para demo/localStorage. No usar así en producción.
+  password: string;
   createdAt: string;
 };
 
@@ -22,6 +22,8 @@ function loadUsers(): User[] {
 
 function saveAuth(session: { id: number; name: string; email: string }) {
   localStorage.setItem(AUTH_KEY, JSON.stringify(session));
+  // ← Notificar al header sin recargar
+  window.dispatchEvent(new Event("hc-auth-changed"));
 }
 
 const LoginPage: React.FC = () => {
@@ -32,7 +34,6 @@ const LoginPage: React.FC = () => {
   const [toast, setToast] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // Autocierre de toast
   useEffect(() => {
     if (!toast) return;
     const t = setTimeout(() => setToast(null), 2800);
@@ -54,22 +55,19 @@ const LoginPage: React.FC = () => {
       }
       saveAuth({ id: found.id, name: found.name, email: found.email });
       setToast(`¡Bienvenido, ${found.name}!`);
-      // pequeña espera para que se vea el toast
-      setTimeout(() => navigate({ to: "/" }), 300);
-    }, 600);
+      setTimeout(() => navigate({ to: "/" }), 200);
+    }, 500);
   };
 
   return (
     <div className="hc-page grid place-items-center p-4">
-      <div className="w-full max-w-md hc-card">
+      <div className="w-full max-w-md hc-card p-6">
         <header className="flex items-center justify-between mb-4">
           <h1 className="text-xl font-semibold">Iniciar sesión</h1>
-          <Link to="/" className="hc-icon" title="Ir al inicio">
-            ⟵
-          </Link>
+          <Link to="/" className="hc-icon" title="Ir al inicio">⟵</Link>
         </header>
 
-        <p className="text-sm text-slate-600 dark:text-slate-300 mb-6">
+        <p className="text-sm text-slate-600 mb-6">
           Accede para controlar tu <span className="font-semibold">HomeClimate+</span>.
         </p>
 
@@ -111,19 +109,13 @@ const LoginPage: React.FC = () => {
             </div>
           </div>
 
-          <button
-            type="submit"
-            className="hc-btn-primary w-full py-2"
-            disabled={loading}
-          >
+          <button type="submit" className="hc-btn-primary w-full py-2" disabled={loading}>
             {loading ? "Entrando…" : "Entrar"}
           </button>
 
-          <div className="text-center text-sm text-slate-600 dark:text-slate-300">
+          <div className="text-center text-sm text-slate-600">
             ¿No tienes cuenta?{" "}
-            <Link to="/register" className="underline">
-              Crea una aquí
-            </Link>
+            <Link to="/register" className="underline">Crea una aquí</Link>
           </div>
         </form>
       </div>
