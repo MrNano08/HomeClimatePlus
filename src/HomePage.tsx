@@ -7,12 +7,12 @@ interface RealtimeStats { kwhNow: number; co2Now: number; maintenanceDue: boolea
 const fmt = (n: number, digits = 1) =>
   new Intl.NumberFormat("es-CR", { maximumFractionDigits: digits }).format(n);
 
-/* === Dark/Light with localStorage === */
+/* === Dark/Light with localStorage (persistente) === */
 function useTheme() {
   const getInitial = () => {
+    if (typeof window === "undefined") return "light";
     const saved = localStorage.getItem("hc-theme");
     if (saved === "dark" || saved === "light") return saved;
-    // fallback: system
     return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
   };
   const [theme, setTheme] = useState<"dark" | "light">(getInitial);
@@ -28,7 +28,7 @@ function useTheme() {
   return { theme, toggle };
 }
 
-/* === Keyboard shortcuts === */
+/* === Atajos de teclado === */
 function useKeyboardShortcuts(openSearch: () => void, openHelp: () => void) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -39,6 +39,45 @@ function useKeyboardShortcuts(openSearch: () => void, openHelp: () => void) {
     return () => window.removeEventListener("keydown", onKey);
   }, [openHelp, openSearch]);
 }
+
+/* === UI helpers: Card y Button === */
+const Card: React.FC<React.PropsWithChildren<{ title: string; className?: string; icon?: string }>> = ({
+  title, className, icon, children
+}) => (
+  <section
+    className={`bg-white text-slate-800 dark:bg-slate-800 dark:text-slate-200 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 p-6 transition-all duration-300 hover:shadow-2xl ${className ?? ""}`}
+    aria-label={title}
+  >
+    <div className="flex items-center gap-3 mb-4">
+      {icon && <span className="text-2xl">{icon}</span>}
+      <h3 className="text-xl font-bold">{title}</h3>
+    </div>
+    {children}
+  </section>
+);
+
+const Button: React.FC<
+  React.ButtonHTMLAttributes<HTMLButtonElement> & { variant?: "primary" | "secondary" | "success" | "ghost" }
+> = ({ children, className = "", variant = "ghost", ...props }) => {
+  const variants: Record<string, string> = {
+    primary:
+      "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg",
+    secondary:
+      "bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white shadow-lg",
+    success:
+      "bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white shadow-lg",
+    ghost:
+      "bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-600",
+  };
+  return (
+    <button
+      className={`px-4 py-2 rounded-xl font-semibold transition-all duration-300 ${variants[variant]} ${className}`}
+      {...props}
+    >
+      {children}
+    </button>
+  );
+};
 
 const HomePage: React.FC = () => {
   const [device, setDevice] = useState<DeviceStatus>({ connected: true, acOn: true, setpoint: 23, mode: "frio" });
@@ -63,6 +102,13 @@ const HomePage: React.FC = () => {
     }, 2000);
     return () => clearInterval(id);
   }, [device.acOn]);
+
+  // Auto-cierre de toasts
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 3000);
+    return () => clearTimeout(t);
+  }, [toast]);
 
   const presets = useMemo(
     () => [
@@ -104,183 +150,294 @@ const HomePage: React.FC = () => {
     setToast(`Simulación: podrías ahorrar ~${fmt(ahorro * 100, 0)}% con esta configuración.`);
   };
 
-  const Card: React.FC<React.PropsWithChildren<{ title: string; className?: string }>> = ({ title, className, children }) => (
-    <section className={`hc-card ${className ?? ""}`} aria-label={title}>
-      <h3 className="text-base font-semibold mb-3">{title}</h3>
-      {children}
-    </section>
-  );
-
   return (
-    <div className="hc-page">
-      <header className="hc-header">
-        <div className="mx-auto max-w-7xl px-4 py-3 flex items-center gap-4">
-          <div className="flex-1">
-            <h1 className="text-xl font-bold">HomeClimate+</h1>
-            <p className="text-xs opacity-70">
-              {device.connected ? "Dispositivos conectados" : "Sin conexión"} · Consumo: {fmt(stats.kwhNow)} kWh · CO₂: {fmt(stats.co2Now, 0)} g/h
-            </p>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 text-slate-900 dark:text-slate-100">
+      {/* Header */}
+      <header className="bg-white/95 dark:bg-slate-800/95 backdrop-blur-sm shadow-lg border-b border-slate-200 dark:border-slate-700 sticky top-0 z-40">
+        <div className="mx-auto max-w-7xl px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
+                <span className="text-white font-bold text-xl">H</span>
+              </div>
+              <div>
+                <h1 className="text-3xl font-bold text-slate-800 dark:text-white">
+                  HomeClimate<span className="text-blue-600">+</span>
+                </h1>
+                <div className="flex flex-wrap items-center gap-4 text-sm text-slate-700 dark:text-slate-400 mt-1">
+                  <div className="flex items-center gap-2">
+                    <div className={`w-3 h-3 rounded-full animate-pulse ${device.connected ? "bg-emerald-500" : "bg-red-500"}`} />
+                    <span>{device.connected ? "Dispositivos conectados" : "Sin conexión"}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">⚡</span>
+                    <span className="font-semibold">{fmt(stats.kwhNow)} kWh</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">🌱</span>
+                    <span className="font-semibold">{fmt(stats.co2Now, 0)} g/h CO₂</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <button
+                onClick={toggle}
+                className="p-2 rounded-xl bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors text-slate-800 dark:text-slate-100"
+                title={`Cambiar a modo ${theme === "dark" ? "claro" : "oscuro"}`}
+              >
+                <span className="text-xl">{theme === "dark" ? "🌙" : "☀️"}</span>
+              </button>
+              <Button onClick={() => setSearchOpen(true)} variant="primary">
+                🔍 Buscar
+              </Button>
+              <Button onClick={() => setHelpOpen(true)} variant="secondary">
+                ❓ Ayuda
+              </Button>
+            </div>
           </div>
-
-          {/* Theme toggle */}
-          <button
-            onClick={toggle}
-            className="hc-icon"
-            title={`Cambiar a modo ${theme === "dark" ? "claro" : "oscuro"}`}
-            aria-label="Cambiar tema"
-          >
-            {theme === "dark" ? "🌙" : "☀️"}
-          </button>
-
-          <button onClick={() => setSearchOpen(true)} className="hc-btn-ghost" title="Búsqueda global (Ctrl+K)">Buscar</button>
-          <button onClick={() => setHelpOpen(true)} className="hc-btn-ghost" title="Ayuda (tecla ?)">Ayuda</button>
         </div>
       </header>
 
-      <main className="mx-auto max-w-7xl p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        <Card title="Control Rápido">
-          <div className="flex flex-wrap items-center gap-3 mb-3">
-            <button onClick={toggleAC} className={device.acOn ? "hc-btn-success" : "hc-btn-ghost"} aria-pressed={device.acOn}>
-              {device.acOn ? "Encendido" : "Apagado"}
-            </button>
+      {/* Main */}
+      <main className="mx-auto max-w-7xl p-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          {/* Control Rápido */}
+          <Card title="Control Rápido" icon="🎛" className="md:col-span-2">
+            <div className="space-y-6">
+              <div className="flex flex-wrap items-center gap-6">
+                <Button
+                  onClick={toggleAC}
+                  variant={device.acOn ? "success" : "ghost"}
+                  className="px-8 py-4 text-lg font-bold"
+                >
+                  {device.acOn ? "🔛 Encendido" : "⏸ Apagado"}
+                </Button>
 
-            <div className="flex items-center gap-2">
-              <span className="hc-badge">Setpoint</span>
-              <input
-                type="number"
-                inputMode="numeric"
-                className="hc-input w-24"
-                value={device.setpoint}
-                onChange={(e) => changeSetpoint(Number(e.target.value))}
-                aria-label="Temperatura objetivo en grados Celsius"
-                min={16}
-                max={30}
-              />
-              <span className="text-sm">°C</span>
+                <div className="flex items-center gap-4 bg-slate-50 dark:bg-slate-700 rounded-xl px-6 py-4 shadow-inner">
+                  <span className="font-semibold text-slate-700 dark:text-slate-300">Temperatura</span>
+                  <input
+                    type="number"
+                    className="w-20 rounded-lg border-2 border-slate-300 dark:border-slate-600 px-3 py-2 bg-white dark:bg-slate-800 font-bold text-xl text-center text-blue-600 focus:border-blue-500 focus:outline-none"
+                    value={device.setpoint}
+                    onChange={(e) => changeSetpoint(Number(e.target.value))}
+                    min={16}
+                    max={30}
+                  />
+                  <span className="font-semibold text-slate-600 dark:text-slate-400">°C</span>
+                </div>
+              </div>
+
+              {/* Modos */}
+              <div className="grid grid-cols-3 gap-4">
+                {(["frio", "calor", "ventilacion"] as Mode[]).map((m) => (
+                  <button
+                    key={m}
+                    onClick={() => changeMode(m)}
+                    className={`p-6 rounded-xl border-2 transition-all font-semibold text-lg ${
+                      device.mode === m
+                        ? "border-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 shadow-lg"
+                        : "border-slate-200 dark:border-slate-600 hover:border-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                    }`}
+                    aria-pressed={device.mode === m}
+                  >
+                    <div className="text-3xl mb-3">{m === "frio" ? "❄" : m === "calor" ? "🔥" : "💨"}</div>
+                    {m === "frio" ? "Frío" : m === "calor" ? "Calor" : "Ventilación"}
+                  </button>
+                ))}
+              </div>
+
+              <div>
+                <Button onClick={undoLast} disabled={!lastSnapshot} className="disabled:opacity-40">
+                  ↶ Deshacer
+                </Button>
+              </div>
             </div>
-          </div>
+          </Card>
 
-          {/* segmented modes */}
-          <div className="hc-seg">
-            {(["frio", "calor", "ventilacion"] as Mode[]).map((m) => {
-              const active = device.mode === m;
-              return (
-                <button key={m} onClick={() => changeMode(m)} className={active ? "is-active" : ""} aria-pressed={active}>
-                  {m === "frio" ? "Frío" : m === "calor" ? "Calor" : "Ventilación"}
+          {/* Consumo */}
+          <Card title="Consumo en Tiempo Real" icon="⚡">
+            <div className="text-center space-y-4">
+              <div className="text-5xl font-bold text-blue-600">{fmt(stats.kwhNow, 2)}</div>
+              <div className="text-xl font-semibold text-slate-700 dark:text-slate-400">kWh</div>
+              <div className="flex items-center justify-center gap-2 text-slate-600 dark:text-slate-400">
+                <div className="w-3 h-3 bg-emerald-500 rounded-full animate-pulse" />
+                <span>Actualizado cada ~2s</span>
+              </div>
+              <div className="bg-slate-50 dark:bg-slate-700 rounded-xl p-4 shadow-inner">
+                <div className="text-sm text-slate-600 dark:text-slate-400 mb-1">Emisiones estimadas</div>
+                <div className="text-2xl font-bold flex items-center justify-center gap-2">
+                  <span>🌱</span> {fmt(stats.co2Now, 0)} g CO₂/h
+                </div>
+              </div>
+            </div>
+          </Card>
+
+          {/* Mantenimiento */}
+          <Card title="Mantenimiento" icon="🔧">
+            {stats.maintenanceDue ? (
+              <div className="rounded-xl border-2 border-amber-300 bg-gradient-to-r from-amber-50 to-orange-50 text-amber-900 p-4 mb-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-xl">⚠</span>
+                  <span className="font-bold">Atención requerida</span>
+                </div>
+                <p className="mb-3">Filtro con horas altas de uso.</p>
+                <button className="text-amber-700 underline font-medium hover:text-amber-800">Ver pasos →</button>
+              </div>
+            ) : (
+              <div className="rounded-xl border-2 border-emerald-300 bg-gradient-to-r from-emerald-50 to-green-50 text-emerald-900 p-4 mb-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-xl">✅</span>
+                  <span className="font-bold">Todo al día</span>
+                </div>
+                <p>Próxima revisión sugerida en 30 días.</p>
+              </div>
+            )}
+            <div className="grid grid-cols-2 gap-3">
+              <Button>📊 Historial</Button>
+              <Button>🔔 Alertas</Button>
+            </div>
+          </Card>
+
+          {/* Simulador */}
+          <Card title="Simulador de Ahorro" icon="💰">
+            <div className="space-y-4">
+              <p className="text-slate-700 dark:text-slate-400">
+                Estima el ahorro según tu modo y setpoint actuales.
+              </p>
+              <Button onClick={runSimulation} variant="primary" className="w-full py-3">
+                🚀 Ejecutar simulación
+              </Button>
+            </div>
+          </Card>
+
+          {/* Automatizaciones */}
+          <Card title="Automatizaciones" icon="🤖">
+            <div className="space-y-4">
+              <div className="flex items-center gap-3">
+                <input
+                  id="geo"
+                  type="checkbox"
+                  checked={geoEnabled}
+                  onChange={(e) => setGeoEnabled(e.target.checked)}
+                  className="w-5 h-5 rounded border-2 border-slate-300"
+                />
+                <label htmlFor="geo" className="font-medium">🌍 Control por geolocalización</label>
+              </div>
+              {geoEnabled && (
+                <div className="rounded-xl border-2 border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-900 p-3 text-sm">
+                  📍 Cuando estés cerca de casa se activará tu escenario elegido. Puedes desactivarlo en cualquier momento.
+                </div>
+              )}
+              <div className="grid grid-cols-2 gap-3">
+                <Button>⏰ Horarios</Button>
+                <Button>🎭 Escenas</Button>
+              </div>
+            </div>
+          </Card>
+
+          {/* Presets */}
+          <Card title="Presets Rápidos" icon="⚡">
+            <div className="space-y-3">
+              {presets.map((p) => (
+                <button
+                  key={p.id}
+                  onClick={() => {
+                    setLastSnapshot(device);
+                    setDevice((d) => ({ ...d, setpoint: p.setpoint, mode: p.mode, acOn: true }));
+                    setToast(`Preset aplicado: ${p.label}`);
+                  }}
+                  className="w-full p-4 rounded-xl border-2 border-slate-200 dark:border-slate-600 hover:border-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all text-left"
+                >
+                  <div className="font-semibold">{p.label}</div>
+                  <div className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                    {p.mode === "frio" ? "❄ Frío" : p.mode === "calor" ? "🔥 Calor" : "💨 Ventilación"}
+                  </div>
                 </button>
-              );
-            })}
-          </div>
-
-          <div className="mt-3">
-            <button onClick={undoLast} disabled={!lastSnapshot} className="hc-btn-ghost disabled:opacity-40">Deshacer</button>
-          </div>
-        </Card>
-
-        <Card title="Consumo en Tiempo Real">
-          <div className="text-[2rem] leading-none font-bold">{fmt(stats.kwhNow, 2)} kWh</div>
-          <p className="text-sm opacity-70">Actualizado en vivo cada ~2s</p>
-          <div className="mt-3 text-sm">Emisiones estimadas: <b>{fmt(stats.co2Now, 0)} g CO₂/h</b></div>
-        </Card>
-
-        <Card title="Mantenimiento">
-          {stats.maintenanceDue ? (
-            <div className="rounded-xl border border-amber-300 bg-amber-50 text-amber-900 p-3 text-sm">
-              Filtro con horas altas de uso. <button className="underline">Ver pasos</button>
+              ))}
             </div>
-          ) : (
-            <div className="rounded-xl border bg-emerald-50 text-emerald-900 p-3 text-sm">
-              Todo al día. Próxima revisión sugerida en 30 días.
+          </Card>
+
+          {/* Ayuda */}
+          <Card title="Ayuda y Documentación" icon="📖">
+            <div className="space-y-4">
+              <p className="text-slate-700 dark:text-slate-400">
+                ¿Dudas? Abre la guía rápida o la documentación completa.
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                <Button onClick={() => setHelpOpen(true)}>Ver guía</Button>
+                <Button>Documentación</Button>
+              </div>
             </div>
-          )}
-          <div className="mt-3 flex gap-2">
-            <button className="hc-btn-ghost">Historial</button>
-            <button className="hc-btn-ghost">Configurar alertas</button>
-          </div>
-        </Card>
-
-        <Card title="Simulador de Ahorro">
-          <p className="text-sm opacity-70 mb-2">Estima el ahorro según tu modo y setpoint actuales.</p>
-          <button onClick={runSimulation} className="hc-btn-primary">Ejecutar simulación</button>
-        </Card>
-
-        <Card title="Automatizaciones">
-          <div className="flex items-center gap-2 mb-2">
-            <input id="geo" type="checkbox" checked={geoEnabled} onChange={(e) => setGeoEnabled(e.target.checked)} className="size-4" />
-            <label htmlFor="geo" className="text-sm">Control por geolocalización</label>
-          </div>
-          {geoEnabled && (
-            <p className="text-xs rounded-lg border bg-sky-50 text-sky-900 p-2">
-              Cuando estés cerca de casa se activará tu escenario elegido. Puedes desactivarlo en cualquier momento.
-            </p>
-          )}
-          <div className="mt-3 flex gap-2">
-            <button className="hc-btn-ghost">Programar horarios</button>
-            <button className="hc-btn-ghost">Escenas</button>
-          </div>
-        </Card>
-
-        <Card title="Presets Rápidos">
-          <div className="grid grid-cols-2 gap-2">
-            {presets.map((p) => (
-              <button
-                key={p.id}
-                onClick={() => {
-                  setLastSnapshot(device);
-                  setDevice((d) => ({ ...d, setpoint: p.setpoint, mode: p.mode, acOn: true }));
-                  setToast(`Preset aplicado: ${p.label}`);
-                }}
-                className="hc-btn-ghost text-left text-sm"
-              >
-                {p.label}
-              </button>
-            ))}
-          </div>
-        </Card>
-
-        <Card title="Ayuda y Documentación">
-          <p className="text-sm opacity-70 mb-2">¿Dudas? Abre la guía rápida o la documentación completa.</p>
-          <div className="flex gap-2">
-            <button onClick={() => setHelpOpen(true)} className="hc-btn-ghost">Ver guía rápida</button>
-            <a className="hc-btn-ghost" href="#docs">Documentación</a>
-          </div>
-        </Card>
+          </Card>
+        </div>
       </main>
 
-      {/* Search modal */}
+      {/* Search Modal */}
       {searchOpen && (
-        <div role="dialog" aria-modal="true" className="fixed inset-0 z-20 grid place-items-center bg-black/40 p-4" onClick={() => setSearchOpen(false)}>
-          <div className="w-full max-w-xl rounded-2xl bg-white dark:bg-slate-900 p-4" onClick={(e) => e.stopPropagation()}>
-            <h2 className="text-lg font-semibold mb-3">Búsqueda rápida</h2>
-            <input autoFocus placeholder="Escribe: programación, consumo, mantenimiento…" className="hc-input" />
-            <p className="text-xs opacity-70 mt-2">Sugerencias aparecerán mientras escribes.</p>
+        <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={() => setSearchOpen(false)}>
+          <div className="w-full max-w-2xl bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 p-8" onClick={(e) => e.stopPropagation()}>
+            <h2 className="text-2xl font-bold mb-6 flex items-center gap-3">
+              <span className="text-3xl">🔍</span> Búsqueda rápida
+            </h2>
+            <input
+              autoFocus
+              placeholder="Escribe: programación, consumo, mantenimiento…"
+              className="w-full rounded-xl border-2 border-slate-300 dark:border-slate-600 px-4 py-3 bg-white dark:bg-slate-700 text-lg focus:border-blue-500 focus:outline-none"
+            />
+            <p className="text-slate-600 dark:text-slate-400 mt-4">💡 Las sugerencias aparecerán mientras escribes.</p>
           </div>
         </div>
       )}
 
-      {/* Help modal */}
+      {/* Help Modal */}
       {helpOpen && (
-        <div role="dialog" aria-modal="true" className="fixed inset-0 z-20 grid place-items-center bg-black/40 p-4" onClick={() => setHelpOpen(false)}>
-          <div className="w-full max-w-lg rounded-2xl bg-white dark:bg-slate-900 p-4 space-y-3" onClick={(e) => e.stopPropagation()}>
-            <h2 className="text-lg font-semibold">Guía rápida</h2>
-            <ul className="list-disc pl-5 text-sm space-y-1">
-              <li>Encender/Apagar y cambiar modo desde “Control Rápido”.</li>
-              <li>Usa presets para aplicar configuraciones comunes al instante.</li>
-              <li>Atajos: <kbd className="px-1 rounded bg-slate-200/70 text-slate-800">Ctrl</kbd>+
-                <kbd className="px-1 rounded bg-slate-200/70 text-slate-800">K</kbd> abre búsqueda, <kbd className="px-1 rounded bg-slate-200/70 text-slate-800">?</kbd> abre esta ayuda.
-              </li>
-              <li>“Automatizaciones” te permite programar horarios o activar geocercas.</li>
-            </ul>
+        <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={() => setHelpOpen(false)}>
+          <div className="w-full max-w-3xl bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 p-8" onClick={(e) => e.stopPropagation()}>
+            <h2 className="text-2xl font-bold mb-6 flex items-center gap-3">
+              <span className="text-3xl">📖</span> Guía rápida
+            </h2>
+            <div className="space-y-4 mb-8">
+              <div className="flex items-start gap-4">
+                <span className="text-2xl">🎛</span>
+                <div>
+                  <div className="font-bold text-lg">Control Rápido</div>
+                  <div className="text-slate-700 dark:text-slate-400">Encender/Apagar y cambiar modo desde el panel principal.</div>
+                </div>
+              </div>
+              <div className="flex items-start gap-4">
+                <span className="text-2xl">⚡</span>
+                <div>
+                  <div className="font-bold text-lg">Presets</div>
+                  <div className="text-slate-700 dark:text-slate-400">Usa configuraciones predefinidas para aplicar ajustes rápidamente.</div>
+                </div>
+              </div>
+              <div className="flex items-start gap-4">
+                <span className="text-2xl">⌨</span>
+                <div>
+                  <div className="font-bold text-lg">Atajos de teclado</div>
+                  <div className="text-slate-700 dark:text-slate-400">
+                    <kbd className="px-2 py-1 rounded bg-slate-100 dark:bg-slate-700 font-mono">Ctrl+K</kbd> abre búsqueda,
+                    <kbd className="px-2 py-1 rounded bg-slate-100 dark:bg-slate-700 font-mono ml-2">?</kbd> abre ayuda.
+                  </div>
+                </div>
+              </div>
+            </div>
             <div className="text-right">
-              <button onClick={() => setHelpOpen(false)} className="hc-btn-ghost">Cerrar</button>
+              <Button onClick={() => setHelpOpen(false)} variant="primary">✓ Entendido</Button>
             </div>
           </div>
         </div>
       )}
 
+      {/* Toast */}
       {toast && (
-        <div role="status" className="hc-toast" onAnimationEnd={() => setTimeout(() => setToast(null), 2200)}>
-          {toast}
+        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 bg-gradient-to-r from-slate-800 to-slate-900 text-white px-6 py-4 rounded-2xl shadow-2xl border border-slate-600 max-w-md">
+          <div className="flex items-center gap-3">
+            <span className="text-lg">ℹ</span>
+            <span className="font-medium">{toast}</span>
+          </div>
         </div>
       )}
     </div>
