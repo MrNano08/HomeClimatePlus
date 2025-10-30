@@ -11,281 +11,355 @@ import {
 } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/router-devtools";
 
-/* ===== Auth (localStorage) ===== */
-type Session = { id: number; name: string; email: string };
-const AUTH_KEY = "hc-auth";
-function readSession(): Session | null {
-  try {
-    const v = localStorage.getItem(AUTH_KEY);
-    return v ? (JSON.parse(v) as Session) : null;
-  } catch {
-    return null;
-  }
-}
+import HomePage from "../Pages/Home/HomePage";
+import LoginPage from "../Pages/LoginPage";
+import RegisterPage from "../Pages/RegisterPage";
+import OnboardingPage from "../Pages/Onboarding/OnboardingPage";
+import DevicesPage from "../Pages/Devices/DevicesPage";
+import DeviceDetailPage from "../Pages/Devices/DeviceDetailPage";
 
-/* ===== Atajos globales ===== */
-function useKeyboardShortcuts(openSearch: () => void, openHelp: () => void) {
-  React.useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
-        e.preventDefault();
-        openSearch();
-      }
-      if (e.key === "?") {
-        e.preventDefault();
-        openHelp();
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [openHelp, openSearch]);
-}
+import AutomationsPage from "../Pages/Automations/AutomationsPage";
+import RoomsPage from "../Pages/Rooms/RoomsPage";
+import SettingsPage from "../Pages/Settings/SettingsPage";
 
-/* ===== Layout root con header responsive y bus de eventos ===== */
-const RootLayout: React.FC = () => {
-  const [searchOpen, setSearchOpen] = React.useState(false);
-  const [helpOpen, setHelpOpen] = React.useState(false);
-  const [menuOpen, setMenuOpen] = React.useState(false);
-  const [session, setSession] = React.useState<Session | null>(() => readSession());
-  const { pathname } = useLocation();
-  const navigate = useNavigate();
+import { AUTH_KEY, FIRST_LOGIN_KEY } from "../store/storage";
 
-  useKeyboardShortcuts(() => setSearchOpen(true), () => setHelpOpen(true));
+/* ===== Root layout with simple nav ===== */
 
-  // Sincronizar sesión en el header
-  React.useEffect(() => {
-    const update = () => setSession(readSession());
-    const onStorage = (e: StorageEvent) => { if (e.key === AUTH_KEY) update(); };
-    window.addEventListener("storage", onStorage);
-    window.addEventListener("hc-auth-changed", update as EventListener);
-    return () => {
-      window.removeEventListener("storage", onStorage);
-      window.removeEventListener("hc-auth-changed", update as EventListener);
-    };
-  }, []);
+const Root: React.FC = () => {
+  const [mobileOpen, setMobileOpen] = React.useState(false);
+  const loc = useLocation();
+  const nav = useNavigate();
+  const authRaw = localStorage.getItem(AUTH_KEY);
+  const session = authRaw ? JSON.parse(authRaw) : null;
 
-  // Eventos globales para abrir modales
-  React.useEffect(() => {
-    const openHelp = () => setHelpOpen(true);
-    const openSearch = () => setSearchOpen(true);
-    window.addEventListener("hc-open-help", openHelp as EventListener);
-    window.addEventListener("hc-open-search", openSearch as EventListener);
-    (window as any).hcOpenHelp = () => window.dispatchEvent(new Event("hc-open-help"));
-    (window as any).hcOpenSearch = () => window.dispatchEvent(new Event("hc-open-search"));
-    return () => {
-      window.removeEventListener("hc-open-help", openHelp as EventListener);
-      window.removeEventListener("hc-open-search", openSearch as EventListener);
-      delete (window as any).hcOpenHelp;
-      delete (window as any).hcOpenSearch;
-    };
-  }, []);
-
-  // Redirigir a /login si no hay sesión en rutas protegidas
-  React.useEffect(() => {
-    if (!session && pathname !== "/login" && pathname !== "/register") {
-      navigate({ to: "/login", replace: true });
-    }
-  }, [session, pathname, navigate]);
-
-  const onLogout = () => {
+  function logout() {
     localStorage.removeItem(AUTH_KEY);
-    window.dispatchEvent(new Event("hc-auth-changed"));
-    setSession(null);
-    setMenuOpen(false);
-    navigate({ to: "/login", replace: true });
-  };
+    nav({ to: "/login" });
+  }
 
-  const onLoginPage = pathname === "/login";
-  const onRegisterPage = pathname === "/register";
+  const is = (p: string) =>
+    loc.pathname === p || (p !== "/" && loc.pathname.startsWith(p));
 
   return (
-    <div className="hc-page min-h-dvh">
-      <header className="hc-header border-slate-200">
-        <div className="w-full px-3 sm:px-4 py-2 sm:py-3 flex items-center justify-between gap-2">
-          <Link to="/" className="inline-flex items-center gap-2 sm:gap-3 shrink-0">
-            <div className="w-9 h-9 sm:w-10 sm:h-10 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl grid place-items-center shadow">
-              <span className="text-white font-bold text-base sm:text-lg">H</span>
-            </div>
-            <h1 className="text-xl sm:text-2xl font-bold text-slate-800">
-              HomeClimate<span className="text-blue-600">+</span>
-            </h1>
-          </Link>
-
-          <div className="flex-1" />
-
-          {/* Desktop */}
-          <nav className="hidden sm:flex items-center gap-2">
-            <button className="hc-btn-primary" onClick={() => setSearchOpen(true)}>🔎 Buscar</button>
-            <button className="hc-btn-ghost" onClick={() => setHelpOpen(true)}>❓ Ayuda</button>
-
-            {session ? (
-              <>
-                <span className="text-sm ml-2 truncate max-w-[180px]">
-                  👋 {session.name} <span className="opacity-70">({session.email})</span>
-                </span>
-                <button className="hc-btn-ghost" onClick={onLogout}>Cerrar sesión</button>
-              </>
-            ) : (
-              <>
-                {!onLoginPage && <Link to="/login" className="hc-btn-ghost">Entrar</Link>}
-                {!onRegisterPage && <Link to="/register" className="hc-btn-primary">Crear cuenta</Link>}
-              </>
-            )}
-          </nav>
-
-          {/* Móvil */}
-          <button
-            className="sm:hidden hc-icon"
-            aria-label="Abrir menú"
-            aria-expanded={menuOpen}
-            aria-controls="hc-mobile-menu"
-            onClick={() => setMenuOpen((s) => !s)}
-          >
-            ☰
-          </button>
+    <div className="min-h-screen flex flex-col">
+{/* === NAVBAR NUEVO === */}
+<header className="sticky top-0 z-40 border-b bg-white/70 backdrop-blur supports-[backdrop-filter]:bg-white/60">
+  <div className="max-w-6xl mx-auto px-3 sm:px-4">
+    <div className="h-14 flex items-center justify-between">
+      {/* Logo / Marca */}
+      <Link to="/" className="flex items-center gap-2 group">
+        <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white grid place-items-center shadow-md">
+          <span className="text-base">❄</span>
         </div>
+        <span className="font-extrabold tracking-tight text-slate-900 group-hover:text-slate-700 transition-colors">
+          HomeClimate<span className="text-blue-600">+</span>
+        </span>
+      </Link>
 
-        {menuOpen && (
-          <div id="hc-mobile-menu" className="sm:hidden border-t border-slate-200 px-3 pb-3">
-            <div className="mt-3 grid gap-2">
-              <button className="hc-btn-primary" onClick={() => { setMenuOpen(false); setSearchOpen(true); }}>🔎 Buscar</button>
-              <button className="hc-btn-ghost" onClick={() => { setMenuOpen(false); setHelpOpen(true); }}>❓ Ayuda</button>
-              {session ? (
-                <>
-                  <div className="text-sm px-1">👋 {session.name} <span className="opacity-70">({session.email})</span></div>
-                  <button className="hc-btn-ghost" onClick={onLogout}>Cerrar sesión</button>
-                </>
-              ) : (
-                <>
-                  {!onLoginPage && <Link to="/login" className="hc-btn-ghost" onClick={() => setMenuOpen(false)}>Entrar</Link>}
-                  {!onRegisterPage && <Link to="/register" className="hc-btn-primary" onClick={() => setMenuOpen(false)}>Crear cuenta</Link>}
-                </>
-              )}
-            </div>
-          </div>
+      {/* Botón hamburguesa (móvil) */}
+      <button
+        className="md:hidden inline-flex items-center justify-center w-10 h-10 rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+        onClick={() => setMobileOpen((v: boolean) => !v)}
+        aria-label="Abrir menú"
+      >
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+          <path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+        </svg>
+      </button>
+
+      {/* Navegación (desktop) */}
+      <nav className="hidden md:flex items-center gap-2 text-sm">
+        <Link
+          to="/"
+          className={`px-3 py-2 rounded-xl transition-colors ${
+            is("/") ? "bg-slate-900 text-white" : "text-slate-700 hover:bg-slate-100"
+          }`}
+        >
+          Inicio
+        </Link>
+
+        {session && (
+          <>
+            <Link
+              to="/rooms"
+              className={`px-3 py-2 rounded-xl transition-colors ${
+                is("/rooms") ? "bg-slate-900 text-white" : "text-slate-700 hover:bg-slate-100"
+              }`}
+            >
+              Habitaciones
+            </Link>
+            <Link
+              to="/devices"
+              className={`px-3 py-2 rounded-xl transition-colors ${
+                is("/devices") ? "bg-slate-900 text-white" : "text-slate-700 hover:bg-slate-100"
+              }`}
+            >
+              Dispositivos
+            </Link>
+            <Link
+              to="/automations"
+              className={`px-3 py-2 rounded-xl transition-colors ${
+                is("/automations") ? "bg-slate-900 text-white" : "text-slate-700 hover:bg-slate-100"
+              }`}
+            >
+              Automatizaciones
+            </Link>
+            <Link
+              to="/settings"
+              className={`px-3 py-2 rounded-xl transition-colors ${
+                is("/settings") ? "bg-slate-900 text-white" : "text-slate-700 hover:bg-slate-100"
+              }`}
+            >
+              Ajustes
+            </Link>
+          </>
         )}
-      </header>
 
-      <main className="w-full px-3 sm:px-4 py-4 sm:py-6">
+        {!session && (
+          <>
+            <Link
+              to="/login"
+              className="px-3 py-2 rounded-xl text-slate-700 hover:bg-slate-100 transition-colors"
+            >
+              Entrar
+            </Link>
+            <Link
+              to="/register"
+              className="px-3 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow hover:brightness-105"
+            >
+              Registro
+            </Link>
+          </>
+        )}
+
+        {session && (
+          <button
+            onClick={logout}
+            className="px-3 py-2 rounded-xl border border-rose-200 text-rose-700 hover:bg-rose-50 transition-colors"
+          >
+            Salir
+          </button>
+        )}
+      </nav>
+    </div>
+  </div>
+
+  {/* Menú móvil desplegable */}
+  {mobileOpen && (
+    <div
+      className="md:hidden border-t bg-white/95 backdrop-blur px-3 sm:px-4 py-2"
+      // Cierra si haces click fuera en otras zonas (opcional si controlas a nivel Root)
+    >
+      <div className="flex flex-col gap-1 text-sm">
+        <Link
+          to="/"
+          className={`px-3 py-2 rounded-xl ${
+            is("/") ? "bg-slate-900 text-white" : "text-slate-700 hover:bg-slate-100"
+          }`}
+          onClick={() => setMobileOpen(false)}
+        >
+          Inicio
+        </Link>
+
+        {session && (
+          <>
+            <Link
+              to="/rooms"
+              className={`px-3 py-2 rounded-xl ${
+                is("/rooms") ? "bg-slate-900 text-white" : "text-slate-700 hover:bg-slate-100"
+              }`}
+              onClick={() => setMobileOpen(false)}
+            >
+              Habitaciones
+            </Link>
+            <Link
+              to="/devices"
+              className={`px-3 py-2 rounded-xl ${
+                is("/devices") ? "bg-slate-900 text-white" : "text-slate-700 hover:bg-slate-100"
+              }`}
+              onClick={() => setMobileOpen(false)}
+            >
+              Dispositivos
+            </Link>
+            <Link
+              to="/automations"
+              className={`px-3 py-2 rounded-xl ${
+                is("/automations") ? "bg-slate-900 text-white" : "text-slate-700 hover:bg-slate-100"
+              }`}
+              onClick={() => setMobileOpen(false)}
+            >
+              Automatizaciones
+            </Link>
+            <Link
+              to="/settings"
+              className={`px-3 py-2 rounded-xl ${
+                is("/settings") ? "bg-slate-900 text-white" : "text-slate-700 hover:bg-slate-100"
+              }`}
+              onClick={() => setMobileOpen(false)}
+            >
+              Ajustes
+            </Link>
+          </>
+        )}
+
+        {!session && (
+          <>
+            <Link
+              to="/login"
+              className="px-3 py-2 rounded-xl text-slate-700 hover:bg-slate-100"
+              onClick={() => setMobileOpen(false)}
+            >
+              Entrar
+            </Link>
+            <Link
+              to="/register"
+              className="px-3 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow hover:brightness-105"
+              onClick={() => setMobileOpen(false)}
+            >
+              Registro
+            </Link>
+          </>
+        )}
+
+        {session && (
+          <button
+            onClick={() => {
+              setMobileOpen(false);
+              logout();
+            }}
+            className="px-3 py-2 rounded-xl border border-rose-200 text-rose-700 hover:bg-rose-50"
+          >
+            Salir
+          </button>
+        )}
+      </div>
+    </div>
+  )}
+</header>
+
+
+      <main className="flex-1">
         <Outlet />
       </main>
 
-      {/* Modal búsqueda */}
-      {searchOpen && (
-        <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4" onClick={() => setSearchOpen(false)}>
-          <div className="w-full max-w-2xl bg-white rounded-2xl shadow-2xl border border-slate-200 p-6 sm:p-8" onClick={(e) => e.stopPropagation()}>
-            <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 flex items-center gap-3">
-              <span className="text-2xl sm:text-3xl">🔍</span> Búsqueda rápida
-            </h2>
-            <input autoFocus className="hc-input text-base sm:text-lg" placeholder="Escribe para buscar…" />
-            <p className="text-slate-600 mt-3 sm:mt-4">💡 Las sugerencias aparecerán mientras escribes.</p>
-          </div>
-        </div>
-      )}
+      <footer className="text-center text-xs text-slate-500 py-4">
+        © 2025 HomeClimate+
+      </footer>
 
-      {/* Modal ayuda */}
-      {helpOpen && (
-        <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4" onClick={() => setHelpOpen(false)}>
-          <div className="w-full max-w-3xl bg-white rounded-2xl shadow-2xl border border-slate-200 p-6 sm:p-8" onClick={(e) => e.stopPropagation()}>
-            <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 flex items-center gap-3">
-              <span className="text-2xl sm:text-3xl">📖</span> Guía rápida
-            </h2>
-            <div className="space-y-4 mb-6 sm:mb-8">
-              <Item icon="🎛" title="Control Rápido">Enciende, apaga y cambia de modo desde el panel principal.</Item>
-              <Item icon="⚡" title="Presets">Ajusta el equipo en un clic con configuraciones predefinidas.</Item>
-              <Item icon="⌨" title="Atajos">
-                <kbd className="px-2 py-1 rounded bg-slate-100 font-mono">Ctrl+K</kbd> abre búsqueda,
-                <kbd className="px-2 py-1 rounded bg-slate-100 font-mono ml-2">?</kbd> abre esta guía.
-              </Item>
-              <Item icon="🌍" title="Geolocalización">Dispara escenas al acercarte a casa.</Item>
-              <Item icon="💰" title="Simulador de ahorro">Estima el ahorro según modo y setpoint.</Item>
-              <Item icon="🔧" title="Mantenimiento">Consulta estado del filtro, historial y alertas.</Item>
-            </div>
-            <div className="text-right">
-              <button className="hc-btn-primary" onClick={() => setHelpOpen(false)}>✓ Entendido</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <TanStackRouterDevtools position="bottom-right" />
+      <TanStackRouterDevtools />
     </div>
   );
 };
 
-const Item: React.FC<React.PropsWithChildren<{icon: string; title: string}>> = ({ icon, title, children }) => (
-  <div className="flex items-start gap-3 sm:gap-4">
-    <span className="text-xl sm:text-2xl">{icon}</span>
-    <div>
-      <div className="font-bold text-base sm:text-lg">{title}</div>
-      <div className="text-slate-700 text-sm sm:text-base">{children}</div>
-    </div>
-  </div>
-);
-
-/* ===== Rutas ===== */
-
-// <<< AQUI: notFoundComponent en el root >>>
-const NotFound = React.lazy(() => import("../Pages/NotFoundPage"));
-
 const rootRoute = createRootRoute({
-  component: RootLayout,
-  notFoundComponent: () => (
-    <React.Suspense fallback={<div>Cargando…</div>}>
-      <NotFound />
-    </React.Suspense>
-  ),
+  component: Root,
 });
 
-const HomePage = React.lazy(() => import("../Pages/HomePage"));
-const LoginPage = React.lazy(() => import("../Pages/LoginPage"));
-const RegisterPage = React.lazy(() => import("../Pages/RegisterPage"));
+/* ===== Guards ===== */
+function requireAuth() {
+  const s = localStorage.getItem(AUTH_KEY);
+  if (!s) throw redirect({ to: "/login" });
+}
+function requireOnboardingIfFirstLogin() {
+  const s = localStorage.getItem(AUTH_KEY);
+  if (!s) throw redirect({ to: "/login" });
+  const first = localStorage.getItem(FIRST_LOGIN_KEY);
+  if (first === "true" || first === null) {
+    throw redirect({ to: "/onboarding" });
+  }
+}
 
-/** "/" protegido: si no hay sesión, redirige a /login */
+/* ===== Routes ===== */
 const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/",
   beforeLoad: () => {
-    const session = readSession();
-    if (!session) throw redirect({ to: "/login" });
+    requireAuth();
+    requireOnboardingIfFirstLogin();
   },
-  component: () => (
-    <React.Suspense fallback={<div>Cargando…</div>}>
-      <HomePage />
-    </React.Suspense>
-  ),
+  component: HomePage,
+});
+
+const roomsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/rooms",
+  beforeLoad: () => {
+    requireAuth();
+    requireOnboardingIfFirstLogin();
+  },
+  component: RoomsPage,
+});
+
+const devicesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/devices",
+  beforeLoad: () => {
+    requireAuth();
+    requireOnboardingIfFirstLogin();
+  },
+  component: DevicesPage,
+});
+
+const deviceRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/devices/$id",
+  beforeLoad: () => {
+    requireAuth();
+    requireOnboardingIfFirstLogin();
+  },
+  component: DeviceDetailPage,
+});
+
+const automationsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/automations",
+  beforeLoad: () => {
+    requireAuth();
+    requireOnboardingIfFirstLogin();
+  },
+  component: AutomationsPage,
+});
+
+const settingsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/settings",
+  beforeLoad: () => {
+    requireAuth();
+    requireOnboardingIfFirstLogin();
+  },
+  component: SettingsPage,
+});
+
+const onboardingRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/onboarding",
+  beforeLoad: () => {
+    requireAuth();
+  },
+  component: OnboardingPage,
 });
 
 const loginRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/login",
-  beforeLoad: () => {
-    const session = readSession();
-    if (session) throw redirect({ to: "/" });
-  },
-  component: () => (
-    <React.Suspense fallback={<div>Cargando…</div>}>
-      <LoginPage />
-    </React.Suspense>
-  ),
+  component: LoginPage,
 });
 
 const registerRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/register",
-  beforeLoad: () => {
-    const session = readSession();
-    if (session) throw redirect({ to: "/" });
-  },
-  component: () => (
-    <React.Suspense fallback={<div>Cargando…</div>}>
-      <RegisterPage />
-    </React.Suspense>
-  ),
+  component: RegisterPage,
 });
 
 const routeTree = rootRoute.addChildren([
   indexRoute,
+  roomsRoute,
+  devicesRoute,
+  deviceRoute,
+  automationsRoute,
+  settingsRoute,
+  onboardingRoute,
   loginRoute,
   registerRoute,
 ]);
@@ -293,5 +367,7 @@ const routeTree = rootRoute.addChildren([
 export const router = createRouter({ routeTree });
 
 declare module "@tanstack/react-router" {
-  interface Register { router: typeof router; }
+  interface Register {
+    router: typeof router;
+  }
 }

@@ -1,111 +1,52 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { useNavigate, Link } from "@tanstack/react-router";
+import { AUTH_KEY, USERS_KEY, FIRST_LOGIN_KEY } from "../store/storage";
 
 type User = { id: number; name: string; email: string; password: string; createdAt: string; };
-
-const USERS_KEY = "hc-users";
-const AUTH_KEY = "hc-auth";
 
 function loadUsers(): User[] {
   try { return JSON.parse(localStorage.getItem(USERS_KEY) || "[]") as User[]; }
   catch { return []; }
 }
-function saveAuth(session: { id: number; name: string; email: string }) {
-  localStorage.setItem(AUTH_KEY, JSON.stringify(session));
-  window.dispatchEvent(new Event("hc-auth-changed"));
-}
 
 const LoginPage: React.FC = () => {
-  const navigate = useNavigate();
+  const nav = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [show, setShow] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    if (!toast) return;
-    const t = setTimeout(() => setToast(null), 2800);
-    return () => clearTimeout(t);
-  }, [toast]);
-
-  const onSubmit = (e: React.FormEvent) => {
+  function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
-    const users = loadUsers();
-    const found = users.find((u) => u.email.trim().toLowerCase() === email.trim().toLowerCase());
     setTimeout(() => {
-      setLoading(false);
-      if (!found || found.password !== password) {
-        setToast("Credenciales inválidas. Verifica tu correo y contraseña.");
+      const users = loadUsers();
+      const u = users.find(x => x.email === email && x.password === password);
+      if (!u) {
+        setToast("Credenciales inválidas");
+        setLoading(false);
         return;
       }
-      saveAuth({ id: found.id, name: found.name, email: found.email });
-      setToast(`¡Bienvenido, ${found.name}!`);
-      setTimeout(() => navigate({ to: "/" }), 200);
-    }, 500);
-  };
+      localStorage.setItem(AUTH_KEY, JSON.stringify({ id: u.id, name: u.name, email: u.email }));
+      const first = localStorage.getItem(FIRST_LOGIN_KEY);
+      if (first === null || first === "true") {
+        localStorage.setItem(FIRST_LOGIN_KEY, "true");
+        nav({ to: "/onboarding" });
+      } else {
+        nav({ to: "/" });
+      }
+    }, 300);
+  }
 
   return (
-    <div className="hc-page grid place-items-center p-6">
-      <div className="w-full max-w-md hc-card p-7 sm:p-8">
-        <header className="flex items-center justify-between mb-5">
-          <h1 className="hc-title">Iniciar sesión</h1>
-          <Link to="/" className="hc-icon" title="Ir al inicio">⟵</Link>
-        </header>
-
-        <p className="text-sm hc-muted mb-7">
-          Accede para controlar tu <span className="font-semibold">HomeClimate+</span>.
-        </p>
-
-        <form onSubmit={onSubmit} className="space-y-5">
-          <div>
-            <label className="block text-sm mb-1.5">Correo</label>
-            <input
-              className="hc-input"
-              type="email"
-              required
-              autoComplete="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="tucorreo@ejemplo.com"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm mb-1.5">Contraseña</label>
-            <div className="relative">
-              <input
-                className="hc-input pr-12"
-                type={show ? "text" : "password"}
-                required
-                minLength={6}
-                autoComplete="current-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-              />
-              <button
-                type="button"
-                className="hc-icon absolute right-1 top-1/2 -translate-y-1/2"
-                onClick={() => setShow((s) => !s)}
-                aria-label={show ? "Ocultar contraseña" : "Mostrar contraseña"}
-              >
-                {show ? "🙈" : "👁️"}
-              </button>
-            </div>
-          </div>
-
-          <button type="submit" className="hc-btn-primary w-full py-2.5" disabled={loading}>
-            {loading ? "Entrando…" : "Entrar"}
-          </button>
-
-          <div className="text-center text-sm hc-muted">
-            ¿No tienes cuenta? <Link to="/register" className="underline">Crea una aquí</Link>
-          </div>
-        </form>
-      </div>
-
+    <div className="max-w-md mx-auto p-4 sm:p-6">
+      <h1 className="text-2xl font-bold mb-4">Iniciar sesión</h1>
+      <form onSubmit={onSubmit} className="space-y-3">
+        <input className="border rounded px-3 py-2 w-full" placeholder="Correo" value={email} onChange={(e)=>setEmail(e.target.value)} />
+        <input className="border rounded px-3 py-2 w-full" placeholder="Contraseña" type="password" value={password} onChange={(e)=>setPassword(e.target.value)} />
+        <button className="w-full px-3 py-2 rounded bg-slate-900 text-white" disabled={loading}>{loading?"Ingresando...":"Ingresar"}</button>
+        <div className="text-center text-sm hc-muted">¿No tienes cuenta? <Link to="/register" className="underline">Crea una aquí</Link></div>
+      </form>
       {toast && <div className="hc-toast">{toast}</div>}
     </div>
   );
